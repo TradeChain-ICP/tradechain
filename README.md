@@ -2,7 +2,7 @@
 
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
-**Project Repository:** [GitHub Repository URL]  
+**Project Repository:** [GitHub Repository URL](https://trade-chain-icp.vercel.app)  
 **Live Demo:** [Canister ID on ICP Mainnet]  
 **Demo Video:** [10-minute walkthrough URL]
 
@@ -361,12 +361,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ### Project Setup
 ```bash
 # Clone the repository
-git clone [repository-url]
-cd tradechain
+git clone https://github.com/kenzycodex/trade-chain-icp.git
+cd trade-chain-icp
 
 # Install frontend dependencies
 cd frontend
-pnpm install
+npm install
 
 # Install backend dependencies
 cd ../backend
@@ -453,7 +453,7 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 
 ## 👥 Team
 
-**[Your Name]** - Full-Stack Developer & Product Lead  
+**[Your Name]** - Project Manager & Product Lead  
 - ICP blockchain development
 - AI/ML implementation
 - Frontend architecture
@@ -502,9 +502,9 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 ## 📞 Contact & Resources
 
 **Project Links:**
-- GitHub Repository: [URL]
+- GitHub Repository: [GitHub Repository URL](httpss://github.com/kenzycodex/trade-chain-icp)
 - Live Demo: [Canister URL]
-- Documentation: [Additional docs URL]
+- Documentation: [Documentation URL](https://trade-chain-icp.vercel.app/docs)
 
 **Team Contact:**
 - Email: [contact@tradechain.icp]
