@@ -455,8 +455,8 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 ## 👥 Team
 
 **Adams Tolani Victor** - Project Manager & Product Lead  
-**Lydia Solomon** - Product Designer & Ideator
-**Dominion Balogun Kehinde** - Frontend Developer
+**Lydia Solomon** - Product Designer & Ideator   
+**Dominion Balogun Kehinde** - Frontend Developer   
 **Olowu Timilehin** - Backend Developer
 
 ---
