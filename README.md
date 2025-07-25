@@ -2,8 +2,9 @@
 
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
-**Project Repository:** [GitHub Repository URL](https://trade-chain-icp.vercel.app)  
-**Live Demo:** [Canister ID on ICP Mainnet]  
+**Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)  
+**Canister ID:** [Canister ID on ICP Mainnet]   
+**Live Demo:** [Canister URL](https://tradechain.icp)  
 **Demo Video:** [10-minute walkthrough URL]
 
 ---
@@ -361,12 +362,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ### Project Setup
 ```bash
 # Clone the repository
-git clone https://github.com/kenzycodex/trade-chain-icp.git
+git clone https://github.com/TradeChain-ICP/tradechain.git
 cd trade-chain-icp
 
 # Install frontend dependencies
 cd frontend
-npm install
+pnpm install
 
 # Install backend dependencies
 cd ../backend
@@ -453,12 +454,10 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 
 ## 👥 Team
 
-**[Your Name]** - Project Manager & Product Lead  
-- ICP blockchain development
-- AI/ML implementation
-- Frontend architecture
-
-**[Additional Team Members]** - [Roles and Expertise]
+**Adams Tolani Victor** - Project Manager & Product Lead  
+**Lydia Solomon** - Product Designer & Ideator
+**Dominion Balogun Kehinde** - Frontend Developer
+**Olowu Timilehin** - Backend Developer
 
 ---
 
@@ -502,14 +501,14 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 ## 📞 Contact & Resources
 
 **Project Links:**
-- GitHub Repository: [GitHub Repository URL](httpss://github.com/kenzycodex/trade-chain-icp)
+- GitHub Repository: [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)
 - Live Demo: [Canister URL]
-- Documentation: [Documentation URL](https://trade-chain-icp.vercel.app/docs)
+<!-- - Documentation: [Documentation URL](https://trade-chain-icp.vercel.app/docs) -->
 
 **Team Contact:**
 - Email: [contact@tradechain.icp]
-- Discord: [Username]
-- Twitter: [@TradeChainICP]
+- Discord: [@Spacefinity_, @lideeyah, @kenzycodex @TimmyDev5]
+- Twitter: [@tradeChain_]
 
 ---
 
