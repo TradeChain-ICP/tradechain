@@ -25,7 +25,7 @@ import {
   Quote
 } from "lucide-react"
 
-export default function ModernTradeChainLanding() {
+export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrollY, setScrollY] = useState(0)
   const [activeTestimonial, setActiveTestimonial] = useState(0)
@@ -143,16 +143,16 @@ export default function ModernTradeChainLanding() {
 
       <main className="relative z-10">
         {/* Hero Section */}
-        <section className="pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <section className="pt-20 pb-12 lg:pt-24 lg:pb-16 min-h-screen flex items-center overflow-hidden">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
               <div className="animate-fade-in-up">
-                <div className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400 text-sm font-medium mb-6 animate-bounce-gentle">
+                <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400 text-sm font-medium mb-4 animate-bounce-gentle">
                   <Zap className="w-4 h-4 mr-2" />
                   Built on Internet Computer Protocol
                 </div>
                 
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-slate-900 dark:text-white leading-tight mb-6">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-slate-900 dark:text-white leading-tight mb-4">
                   Trade Real-World{' '}
                   <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent animate-gradient">
                     Commodities
@@ -160,32 +160,32 @@ export default function ModernTradeChainLanding() {
                   with Blockchain Security
                 </h1>
                 
-                <p className="text-xl lg:text-2xl text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
+                <p className="text-lg lg:text-xl text-slate-600 dark:text-slate-300 mb-6 leading-relaxed max-w-xl">
                   Buy and sell precious metals, oil, agricultural products, and timber using ICP tokens. 
                   Experience institutional-grade trading with retail accessibility.
                 </p>
                 
-                <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                <div className="flex flex-col sm:flex-row gap-3 mb-8">
                   <Link href="/register">
-                    <button className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center">
+                    <button className="group px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-base hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center">
                       Start Trading Now
-                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
                   </Link>
-                  <button className="group px-8 py-4 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 flex items-center justify-center">
-                    <Play className="mr-2 h-5 w-5" />
+                  <button className="group px-6 py-3 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-base hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 flex items-center justify-center">
+                    <Play className="mr-2 h-4 w-4" />
                     Watch Demo
                   </button>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-8">
+                <div className="grid grid-cols-3 gap-6">
                   {stats.map((stat, index) => (
                     <div key={index} className="text-center">
-                      <div className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                      <div className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white mb-1">
                         {stat.value}
                       </div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
                         {stat.label}
                       </div>
                     </div>
@@ -195,27 +195,27 @@ export default function ModernTradeChainLanding() {
 
               <div className="relative animate-fade-in-right">
                 {/* Laptop Mockup Container */}
-                <div className="relative z-10">
-                  <div className="relative bg-slate-800 rounded-t-2xl p-2 shadow-2xl">
+                <div className="relative z-10 max-w-lg mx-auto">
+                  <div className="relative bg-slate-800 rounded-t-xl p-1.5 shadow-2xl">
                     {/* Laptop Screen Bezel */}
-                    <div className="bg-black rounded-t-xl p-4">
+                    <div className="bg-black rounded-t-lg p-3">
                       {/* Browser Chrome */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex space-x-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex space-x-1.5">
+                          <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                          <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
+                          <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
                         </div>
-                        <div className="flex-1 mx-4">
-                          <div className="bg-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300 text-center">
+                        <div className="flex-1 mx-3">
+                          <div className="bg-slate-700 rounded-md px-2 py-0.5 text-xs text-slate-300 text-center">
                             tradechain.icp
                           </div>
                         </div>
-                        <div className="w-16"></div>
+                        <div className="w-12"></div>
                       </div>
                       
                       {/* Dashboard Screenshot */}
-                      <div className="relative overflow-hidden rounded-lg">
+                      <div className="relative overflow-hidden rounded-md">
                         <img 
                           src="/images/dashboard-hero.png"
                           alt="TradeChain Platform Dashboard"
@@ -225,17 +225,17 @@ export default function ModernTradeChainLanding() {
                     </div>
                     
                     {/* Laptop Base */}
-                    <div className="bg-slate-700 h-6 rounded-b-2xl relative">
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-1 bg-slate-600 rounded-full"></div>
+                    <div className="bg-slate-700 h-4 rounded-b-xl relative">
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-0.5 bg-slate-600 rounded-full"></div>
                     </div>
                   </div>
                   
                   {/* Floating Elements */}
-                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center animate-float">
-                    <TrendingUp className="w-12 h-12 text-white" />
+                  <div className="absolute -top-3 -right-3 w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center animate-float">
+                    <TrendingUp className="w-8 h-8 text-white" />
                   </div>
-                  <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center animate-float animation-delay-2000">
-                    <Shield className="w-10 h-10 text-white" />
+                  <div className="absolute -bottom-3 -left-3 w-14 h-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center animate-float animation-delay-2000">
+                    <Shield className="w-7 h-7 text-white" />
                   </div>
                 </div>
                 
@@ -408,7 +408,7 @@ export default function ModernTradeChainLanding() {
                       <div className="bg-white dark:bg-slate-800 p-8 lg:p-12 rounded-2xl shadow-xl">
                         <Quote className="w-12 h-12 text-blue-600 dark:text-blue-400 mb-6" />
                         <p className="text-xl lg:text-2xl text-slate-700 dark:text-slate-300 leading-relaxed mb-8 font-medium">
-                          "{testimonial.content}"
+                          &quot;{testimonial.content}&quot;
                         </p>
                         <div className="flex items-center">
                           <img 
