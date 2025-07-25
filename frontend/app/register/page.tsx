@@ -1,79 +1,86 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { ArrowLeft, Info } from "lucide-react"
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { ArrowLeft, Info } from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/components/ui/use-toast"
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function RegisterPage() {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [agreeTerms, setAgreeTerms] = useState(false)
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (password !== confirmPassword) {
       toast({
         title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      })
-      return
+        description: 'Please make sure your passwords match.',
+        variant: 'destructive',
+      });
+      return;
     }
 
     if (!agreeTerms) {
       toast({
-        title: "Terms and Conditions",
-        description: "Please agree to the terms and conditions to continue.",
-        variant: "destructive",
-      })
-      return
+        title: 'Terms and Conditions',
+        description: 'Please agree to the terms and conditions to continue.',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     // Simulate registration process
     setTimeout(() => {
-      setIsLoading(false)
+      setIsLoading(false);
       toast({
-        title: "Registration Successful",
-        description: "Please proceed to the KYC verification process.",
-      })
+        title: 'Registration Successful',
+        description: 'Please proceed to the KYC verification process.',
+      });
 
       // Redirect to role selection
-      window.location.href = "/role-selection"
-    }, 1500)
-  }
+      window.location.href = '/role-selection';
+    }, 1500);
+  };
 
   const handleInternetIdentityRegister = () => {
-    setIsLoading(true)
+    setIsLoading(true);
 
     // Simulate Internet Identity authentication
     setTimeout(() => {
-      setIsLoading(false)
+      setIsLoading(false);
       toast({
-        title: "Internet Identity Authentication",
-        description: "Successfully authenticated with Internet Identity",
-      })
+        title: 'Internet Identity Authentication',
+        description: 'Successfully authenticated with Internet Identity',
+      });
 
       // Redirect to role selection
-      window.location.href = "/role-selection"
-    }, 1500)
-  }
+      window.location.href = '/role-selection';
+    }, 1500);
+  };
 
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
@@ -88,7 +95,7 @@ export default function RegisterPage() {
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
         <div className="absolute inset-0 bg-zinc-900">
           <Image
-            src="/placeholder.svg?height=1080&width=1920"
+            src="/images/auth-background.jpeg"
             fill
             alt="Authentication background"
             className="object-cover opacity-30"
@@ -96,7 +103,7 @@ export default function RegisterPage() {
         </div>
         <div className="relative z-20 flex items-center text-lg font-medium">
           <Image
-            src="/placeholder.svg?height=32&width=32"
+            src="/images/tradechain-logo.png"
             alt="TradeChain Logo"
             width={32}
             height={32}
@@ -107,8 +114,8 @@ export default function RegisterPage() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              "Joining TradeChain was one of the best business decisions I've made. The platform has opened up new
-              markets for my agricultural products."
+              "Joining TradeChain was one of the best business decisions I've made. The platform has
+              opened up new markets for my agricultural products."
             </p>
             <footer className="text-sm">Michael Chen, Agricultural Supplier</footer>
           </blockquote>
@@ -119,7 +126,9 @@ export default function RegisterPage() {
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
-            <p className="text-sm text-muted-foreground">Sign up to start trading commodities on our platform</p>
+            <p className="text-sm text-muted-foreground">
+              Sign up to start trading commodities on our platform
+            </p>
           </div>
 
           <Tabs defaultValue="email" className="w-full">
@@ -130,7 +139,7 @@ export default function RegisterPage() {
 
             <TabsContent value="email">
               <Card>
-                <form onSubmit={handleRegister}>
+                <div onSubmit={handleRegister}>
                   <CardHeader>
                     <CardTitle>Email Registration</CardTitle>
                     <CardDescription>Enter your details to create an account</CardDescription>
@@ -177,7 +186,7 @@ export default function RegisterPage() {
                         htmlFor="terms"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        I agree to the{" "}
+                        I agree to the{' '}
                         <Link href="/terms" className="text-primary hover:underline">
                           terms and conditions
                         </Link>
@@ -185,11 +194,16 @@ export default function RegisterPage() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Creating account..." : "Create account"}
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                      onClick={handleRegister}
+                    >
+                      {isLoading ? 'Creating account...' : 'Create account'}
                     </Button>
                   </CardFooter>
-                </form>
+                </div>
               </Card>
             </TabsContent>
 
@@ -207,8 +221,9 @@ export default function RegisterPage() {
                       </div>
                       <div className="ml-3">
                         <p className="text-sm text-blue-700">
-                          Internet Identity is a blockchain-based authentication system that provides a secure way to
-                          sign in without passwords. Your ICP wallet will be automatically created.
+                          Internet Identity is a blockchain-based authentication system that
+                          provides a secure way to sign in without passwords. Your ICP wallet will
+                          be automatically created.
                         </p>
                       </div>
                     </div>
@@ -223,7 +238,7 @@ export default function RegisterPage() {
                       htmlFor="terms-ii"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                      I agree to the{" "}
+                      I agree to the{' '}
                       <Link href="/terms" className="text-primary hover:underline">
                         terms and conditions
                       </Link>
@@ -237,7 +252,7 @@ export default function RegisterPage() {
                     variant="outline"
                     disabled={isLoading || !agreeTerms}
                   >
-                    {isLoading ? "Creating account..." : "Continue with Internet Identity"}
+                    {isLoading ? 'Creating account...' : 'Continue with Internet Identity'}
                   </Button>
                 </CardFooter>
               </Card>
@@ -245,7 +260,7 @@ export default function RegisterPage() {
           </Tabs>
 
           <p className="px-8 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Already have an account?{' '}
             <Link href="/login" className="underline underline-offset-4 hover:text-primary">
               Sign in
             </Link>
@@ -253,5 +268,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
