@@ -44,18 +44,19 @@ export function LandingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 dark:from-slate-950 dark:via-black dark:to-slate-900">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-4 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute -top-4 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-4 -left-4 w-72 h-72 bg-slate-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob"></div>
+        <div className="absolute -top-4 -right-4 w-72 h-72 bg-blue-600/30 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-slate-700/10 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-1000"></div>
       </div>
 
       {/* Header */}
       <header className={`fixed top-0 z-50 w-full transition-all duration-300 ${
         scrollY > 50 
-          ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200/20 shadow-lg' 
+          ? 'bg-slate-900/90 dark:bg-black/90 backdrop-blur-lg border-b border-slate-700/30 shadow-lg' 
           : 'bg-transparent'
       }`}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,22 +80,22 @@ export function LandingPage() {
                 <Link 
                   key={item}
                   href={`#${item.toLowerCase().replace(' ', '-')}`} 
-                  className="text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 font-medium transition-colors duration-200 relative group"
+                  className="text-slate-300 hover:text-blue-400 dark:text-slate-300 dark:hover:text-blue-400 font-medium transition-colors duration-200 relative group"
                 >
                   {item}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span>
                 </Link>
               ))}
             </nav>
 
             <div className="hidden lg:flex items-center space-x-4">
               <Link href="/login">
-                <button className="px-6 py-2 text-slate-600 hover:text-blue-600 dark:text-slate-300 font-medium transition-colors duration-200">
+                <button className="px-6 py-2 text-slate-300 hover:text-blue-400 dark:text-slate-300 font-medium transition-colors duration-200">
                   Sign In
                 </button>
               </Link>
               <Link href="/register">
-                <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300">
                   Get Started
                 </button>
               </Link>
@@ -112,13 +113,13 @@ export function LandingPage() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/20">
+          <div className="lg:hidden bg-slate-900/95 dark:bg-black/95 backdrop-blur-lg border-t border-slate-700/30">
             <div className="container mx-auto px-4 py-6 space-y-4">
               {['Features', 'Commodities', 'How It Works', 'Testimonials'].map((item) => (
                 <Link 
                   key={item}
                   href={`#${item.toLowerCase().replace(' ', '-')}`}
-                  className="block py-2 text-slate-600 hover:text-blue-600 dark:text-slate-300 font-medium transition-colors duration-200"
+                  className="block py-2 text-slate-300 hover:text-blue-400 dark:text-slate-300 font-medium transition-colors duration-200"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item}
@@ -126,7 +127,7 @@ export function LandingPage() {
               ))}
               <div className="pt-4 space-y-3">
                 <Link href="/login" className="block" onClick={() => setMobileMenuOpen(false)}>
-                  <button className="w-full px-6 py-3 text-slate-600 border border-slate-300 rounded-xl font-medium hover:bg-slate-50 transition-colors duration-200">
+                  <button className="w-full px-6 py-3 text-slate-300 border border-slate-600 rounded-xl font-medium hover:bg-slate-800 transition-colors duration-200">
                     Sign In
                   </button>
                 </Link>
@@ -152,15 +153,15 @@ export function LandingPage() {
                   Built on Internet Computer Protocol
                 </div>
                 
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-slate-900 dark:text-white leading-tight mb-4">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white dark:text-white leading-tight mb-4">
                   Trade Real-World{' '}
-                  <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent animate-gradient">
+                  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent animate-gradient">
                     Commodities
                   </span>{' '}
                   with Blockchain Security
                 </h1>
                 
-                <p className="text-lg lg:text-xl text-slate-600 dark:text-slate-300 mb-6 leading-relaxed max-w-xl">
+                <p className="text-lg lg:text-xl text-slate-300 dark:text-slate-300 mb-6 leading-relaxed max-w-xl">
                   Buy and sell precious metals, oil, agricultural products, and timber using ICP tokens. 
                   Experience institutional-grade trading with retail accessibility.
                 </p>
@@ -172,7 +173,7 @@ export function LandingPage() {
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
                   </Link>
-                  <button className="group px-6 py-3 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-base hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-300 flex items-center justify-center">
+                  <button className="group px-6 py-3 border-2 border-slate-600 text-slate-300 dark:text-slate-300 rounded-xl font-semibold text-base hover:bg-slate-800/50 dark:hover:bg-slate-800 transition-all duration-300 flex items-center justify-center">
                     <Play className="mr-2 h-4 w-4" />
                     Watch Demo
                   </button>
@@ -182,10 +183,10 @@ export function LandingPage() {
                 <div className="grid grid-cols-3 gap-6">
                   {stats.map((stat, index) => (
                     <div key={index} className="text-center">
-                      <div className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                      <div className="text-xl lg:text-2xl font-bold text-white dark:text-white mb-1">
                         {stat.value}
                       </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                      <div className="text-xs text-slate-400 dark:text-slate-400">
                         {stat.label}
                       </div>
                     </div>
@@ -247,20 +248,20 @@ export function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 lg:py-32 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <section id="features" className="py-20 lg:py-32 bg-slate-900/50 dark:bg-slate-950/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400 text-sm font-medium mb-6">
+              <div className="inline-flex items-center px-4 py-2 bg-purple-900/30 dark:bg-purple-900/30 rounded-full text-purple-400 dark:text-purple-400 text-sm font-medium mb-6">
                 <Star className="w-4 h-4 mr-2" />
                 Platform Features
               </div>
-              <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-6">
+              <h2 className="text-4xl lg:text-5xl font-bold text-white dark:text-white mb-6">
                 Everything You Need to Trade{' '}
-                <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
                   Smart
                 </span>
               </h2>
-              <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
+              <p className="text-xl text-slate-300 dark:text-slate-300 max-w-3xl mx-auto">
                 TradeChain combines the security of blockchain with the intelligence of AI to create the ultimate commodity trading platform.
               </p>
             </div>
