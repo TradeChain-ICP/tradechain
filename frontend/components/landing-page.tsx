@@ -62,9 +62,11 @@ export default function ModernTradeChainLanding() {
           <div className="flex h-16 lg:h-20 items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center transform rotate-12 hover:rotate-0 transition-transform duration-300">
-                  <span className="text-white font-bold text-lg">T</span>
-                </div>
+                <img 
+                  src="/images/tradechain-logo.png"
+                  alt="TradeChain Logo"
+                  className="w-10 h-10 rounded-lg transform rotate-12 hover:rotate-0 transition-transform duration-300"
+                />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 TradeChain
@@ -192,12 +194,43 @@ export default function ModernTradeChainLanding() {
               </div>
 
               <div className="relative animate-fade-in-right">
+                {/* Laptop Mockup Container */}
                 <div className="relative z-10">
-                  <img 
-                    src="/api/placeholder/600/600"
-                    alt="TradeChain Platform Dashboard"
-                    className="w-full h-auto rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-500"
-                  />
+                  <div className="relative bg-slate-800 rounded-t-2xl p-2 shadow-2xl">
+                    {/* Laptop Screen Bezel */}
+                    <div className="bg-black rounded-t-xl p-4">
+                      {/* Browser Chrome */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex space-x-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        </div>
+                        <div className="flex-1 mx-4">
+                          <div className="bg-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300 text-center">
+                            tradechain.icp
+                          </div>
+                        </div>
+                        <div className="w-16"></div>
+                      </div>
+                      
+                      {/* Dashboard Screenshot */}
+                      <div className="relative overflow-hidden rounded-lg">
+                        <img 
+                          src="/images/dashboard-hero.png"
+                          alt="TradeChain Platform Dashboard"
+                          className="w-full h-auto transform hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Laptop Base */}
+                    <div className="bg-slate-700 h-6 rounded-b-2xl relative">
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-1 bg-slate-600 rounded-full"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Floating Elements */}
                   <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center animate-float">
                     <TrendingUp className="w-12 h-12 text-white" />
                   </div>
@@ -205,6 +238,8 @@ export default function ModernTradeChainLanding() {
                     <Shield className="w-10 h-10 text-white" />
                   </div>
                 </div>
+                
+                {/* Glow Effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-2xl blur-xl -z-10"></div>
               </div>
             </div>
@@ -412,7 +447,7 @@ export default function ModernTradeChainLanding() {
 
         {/* CTA Section */}
         <section className="py-20 lg:py-32 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/api/placeholder/1920/800')] opacity-10"></div>
+          <div className="absolute inset-0 bg-[url('/images/trading-background.jpeg')] opacity-10 bg-cover bg-center"></div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center max-w-4xl mx-auto">
               <h2 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -455,9 +490,11 @@ export default function ModernTradeChainLanding() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
             <div>
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">T</span>
-                </div>
+                <img 
+                  src="/images/tradechain-logo.png"
+                  alt="TradeChain Logo"
+                  className="w-10 h-10 rounded-lg"
+                />
                 <span className="text-2xl font-bold">TradeChain</span>
               </div>
               <p className="text-slate-400 leading-relaxed mb-6">
@@ -616,25 +653,25 @@ const commodityCategories = [
     name: "Precious Metals",
     count: "150+",
     startingPrice: "1,950 ICP",
-    image: "/api/placeholder/400/400"
+    image: "/images/precious-metals.jpeg"
   },
   {
     name: "Oil & Gas",
     count: "80+",
     startingPrice: "75 ICP",
-    image: "/api/placeholder/400/400"
+    image: "/images/oil-gas.jpeg"
   },
   {
     name: "Agriculture",
     count: "200+",
     startingPrice: "7.25 ICP",
-    image: "/api/placeholder/400/400"
+    image: "/images/agriculture.jpeg"
   },
   {
     name: "Timber",
     count: "120+",
     startingPrice: "350 ICP",
-    image: "/api/placeholder/400/400"
+    image: "/images/timber.jpeg"
   }
 ]
 
@@ -655,22 +692,22 @@ const steps = [
 
 const testimonials = [
   {
-    name: "Sarah Chen",
+    name: "Sarah Davids",
     role: "Investment Manager",
     content: "TradeChain revolutionized how I approach commodity investing. The AI insights helped me increase my portfolio returns by 40% in just 6 months.",
-    avatar: "/api/placeholder/100/100"
+    avatar: "/images/sarah-davids.jpeg"
   },
   {
-    name: "Marcus Rodriguez",
+    name: "Marcus Johnson",
     role: "Agricultural Trader",
     content: "As a coffee bean trader, I love the transparency and security. The escrow system gives me confidence in every transaction, and the global reach is incredible.",
-    avatar: "/api/placeholder/100/100"
+    avatar: "/images/marcus-johnson.jpeg"
   },
   {
-    name: "Elena Kowalski",
+    name: "Elena Akwasi",
     role: "Precious Metals Investor",
     content: "The platform's user experience is exceptional. I can trade gold and silver with the same ease as buying stocks, but with much better insights and security.",
-    avatar: "/api/placeholder/100/100"
+    avatar: "/images/elena-akwasi.jpeg"
   }
 ]
 
