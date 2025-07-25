@@ -227,38 +227,226 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ---
 
+## 📁 Project Structure
+
+```
+📁 tradechain/
+├── 📁 backend/                          # ICP Backend (Motoko/Rust Canisters)
+│   ├── 📁 src/
+│   │   ├── 📁 user_management/          # User auth, KYC, profiles
+│   │   ├── 📁 marketplace/              # Product listings, search
+│   │   ├── 📁 escrow/                   # Smart contract escrow system
+│   │   ├── 📁 wallet/                   # ICP + tokenized fiat management
+│   │   ├── 📁 ai_insights/              # AI analytics and recommendations
+│   │   └── 📁 notifications/            # Real-time alerts system
+│   ├── dfx.json                         # DFX configuration
+│   ├── vessel.dhall                     # Motoko package manager
+│   └── Cargo.toml                       # Rust dependencies
+│
+├── 📁 frontend/                         # Next.js Frontend Application
+│   ├── 📁 app/                          # Next.js 14 App Router
+│   │   ├── 📁 (auth)/                   # Authentication routes
+│   │   │   ├── 📁 login/
+│   │   │   ├── 📁 register/
+│   │   │   ├── 📁 kyc-verification/
+│   │   │   └── 📁 role-selection/
+│   │   ├── 📁 (buyer)/                  # Buyer dashboard routes
+│   │   │   ├── 📁 buyer-dashboard/
+│   │   │   ├── 📁 marketplace/
+│   │   │   ├── 📁 cart/
+│   │   │   ├── 📁 checkout/
+│   │   │   ├── 📁 order-tracking/
+│   │   │   ├── 📁 purchase-history/
+│   │   │   ├── 📁 favorites/
+│   │   │   └── 📁 portfolio/
+│   │   ├── 📁 (seller)/                 # Seller dashboard routes
+│   │   │   ├── 📁 seller-dashboard/
+│   │   │   ├── 📁 add-product/
+│   │   │   ├── 📁 inventory/
+│   │   │   ├── 📁 ai-insights/
+│   │   │   ├── 📁 analytics/
+│   │   │   ├── 📁 seller-orders/
+│   │   │   ├── 📁 price-optimizer/
+│   │   │   ├── 📁 product-performance/
+│   │   │   └── 📁 earnings/
+│   │   ├── 📁 (shared)/                 # Shared routes
+│   │   │   ├── 📁 product/[id]/
+│   │   │   ├── 📁 category/[slug]/
+│   │   │   ├── 📁 search/
+│   │   │   ├── 📁 wallet/
+│   │   │   ├── 📁 profile/
+│   │   │   ├── 📁 settings/
+│   │   │   ├── 📁 notifications/
+│   │   │   ├── 📁 messages/
+│   │   │   └── 📁 help/
+│   │   ├── 📁 (admin)/                  # Admin panel routes
+│   │   │   ├── 📁 admin-dashboard/
+│   │   │   ├── 📁 user-management/
+│   │   │   ├── 📁 product-moderation/
+│   │   │   ├── 📁 transaction-monitor/
+│   │   │   └── 📁 platform-analytics/
+│   │   ├── layout.tsx                   # Root layout
+│   │   ├── page.tsx                     # Landing page
+│   │   └── globals.css                  # Global styles
+│   ├── 📁 components/                   # Reusable UI components
+│   │   ├── 📁 ui/                       # Shadcn/ui components
+│   │   ├── 📁 layouts/                  # Layout components
+│   │   │   ├── dashboard-layout.tsx
+│   │   │   ├── auth-layout.tsx
+│   │   │   └── admin-layout.tsx
+│   │   ├── 📁 auth/                     # Authentication components
+│   │   ├── 📁 cart/                     # Shopping cart components
+│   │   ├── 📁 ai/                       # AI-powered components
+│   │   ├── product-card.tsx
+│   │   ├── landing-page.tsx
+│   │   └── theme-provider.tsx
+│   ├── 📁 contexts/                     # React contexts
+│   │   ├── auth-context.tsx
+│   │   ├── cart-context.tsx
+│   │   └── theme-context.tsx
+│   ├── 📁 hooks/                        # Custom React hooks
+│   │   ├── use-auth.ts
+│   │   ├── use-cart.ts
+│   │   └── use-icp-wallet.ts
+│   ├── 📁 lib/                          # Utility libraries
+│   │   ├── utils.ts
+│   │   ├── icp-agent.ts
+│   │   └── ai-insights.ts
+│   ├── 📁 data/                         # Demo data and constants
+│   │   ├── products.tsx
+│   │   ├── categories.ts
+│   │   └── mock-users.ts
+│   ├── 📁 public/                       # Static assets
+│   │   ├── images/
+│   │   ├── icons/
+│   │   └── logo/
+│   ├── next.config.mjs
+│   ├── package.json
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
+│
+├── 📁 docs/                             # Project Documentation
+│   ├── 📄 API.md                        # Backend API documentation
+│   ├── 📄 DEPLOYMENT.md                 # Deployment instructions
+│   ├── 📄 ARCHITECTURE.md               # System architecture details
+│   ├── 📄 AI_FEATURES.md                # AI implementation details
+│   ├── 📄 SMART_CONTRACTS.md            # Canister documentation
+│   ├── 📄 USER_FLOWS.md                 # User journey documentation
+│   ├── 📄 SECURITY.md                   # Security implementation
+│   └── 📄 CONTRIBUTING.md               # Development guidelines
+│
+├── 📄 README.md                         # Main project documentation
+├── 📄 dfx.json                          # ICP project configuration
+├── 📄 .gitignore                        # Git ignore rules
+├── 📄 LICENSE                           # Project license
+└── 📄 CHANGELOG.md                      # Version history
+```
+
 ## 🔧 Setup Instructions
 
 ### Prerequisites
 ```bash
-# Install DFX
+# Install DFX (Internet Computer SDK)
 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
 
-# Install Node.js dependencies
-npm install
+# Install Node.js (v18+) and pnpm
+npm install -g pnpm
 
-# Install Rust and Motoko
-# [Detailed installation instructions]
+# Install Rust (for backend canisters)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Motoko VSCode extension (optional but recommended)
+```
+
+### Project Setup
+```bash
+# Clone the repository
+git clone [repository-url]
+cd tradechain
+
+# Install frontend dependencies
+cd frontend
+pnpm install
+
+# Install backend dependencies
+cd ../backend
+# Dependencies managed by dfx.json and vessel.dhall
 ```
 
 ### Local Development
+
+#### Backend (ICP Canisters)
 ```bash
+# Navigate to backend directory
+cd backend
+
 # Start local ICP replica
 dfx start --background
 
-# Deploy canisters
+# Deploy all canisters locally
 dfx deploy
 
-# Start frontend development server
-npm run dev
+# Check canister URLs
+dfx canister id --all
+```
+
+#### Frontend (Next.js App)
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Create environment file
+cp .env.example .env.local
+
+# Start development server
+pnpm dev
+
+# App will be available at http://localhost:3000
 ```
 
 ### Environment Configuration
+
+#### Frontend (.env.local)
 ```bash
-# Create .env.local file with:
+# ICP Network Configuration
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:8000
-# [Additional environment variables]
+
+# Canister IDs (auto-generated after deployment)
+NEXT_PUBLIC_USER_CANISTER_ID=your_user_canister_id
+NEXT_PUBLIC_MARKETPLACE_CANISTER_ID=your_marketplace_canister_id
+NEXT_PUBLIC_ESCROW_CANISTER_ID=your_escrow_canister_id
+NEXT_PUBLIC_WALLET_CANISTER_ID=your_wallet_canister_id
+
+# External Services
+NEXT_PUBLIC_KYC_PROVIDER_API=your_kyc_api_key
+NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
+```
+
+#### Backend (dfx.json)
+```json
+{
+  "canisters": {
+    "user_management": {
+      "type": "motoko",
+      "main": "src/user_management/main.mo"
+    },
+    "marketplace": {
+      "type": "rust",
+      "package": "marketplace"
+    },
+    "escrow": {
+      "type": "motoko",
+      "main": "src/escrow/main.mo"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  }
+}
 ```
 
 ---
