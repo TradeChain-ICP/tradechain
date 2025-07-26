@@ -53,6 +53,38 @@ module {
         #Cancelled;
     };
 
+    // Marketplace Types
+    public type ProductCategory = {
+        #PreciousMetals;
+        #OilGas;
+        #Agriculture;
+        #Timber;
+    };
+
+    public type ProductCondition = {
+        #New;
+        #Used;
+        #Refurbished;
+    };
+
+    public type OrderStatus = {
+        #Pending;
+        #Confirmed;
+        #Processing;
+        #Shipped;
+        #Delivered;
+        #Cancelled;
+        #Disputed;
+    };
+
+    public type ListingStatus = {
+        #Active;
+        #Inactive;
+        #Sold;
+        #Expired;
+        #Removed;
+    };
+
     // Error Types
     public type UserError = {
         #UserNotFound;
@@ -74,6 +106,19 @@ module {
         #InternalError: Text;
     };
 
+    public type MarketplaceError = {
+        #ProductNotFound;
+        #OrderNotFound;
+        #InsufficientStock;
+        #InvalidProductData;
+        #UnauthorizedSeller;
+        #ProductNotActive;
+        #InvalidOrderStatus;
+        #PaymentFailed;
+        #Unauthorized;
+        #InternalError: Text;
+    };
+
     // Notification Types
     public type NotificationType = {
         #Welcome;
@@ -84,5 +129,10 @@ module {
         #TransactionCompleted;
         #DepositReceived;
         #WithdrawalProcessed;
+        #ProductListed;
+        #OrderPlaced;
+        #OrderShipped;
+        #OrderDelivered;
+        #PaymentReceived;
     };
 }

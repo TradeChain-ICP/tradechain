@@ -8,6 +8,10 @@
 		"wallet": {
 			"type": "motoko",
 			"main": "src/wallet/main.mo"
+		},
+		"marketplace": {
+			"type": "motoko",
+			"main": "src/marketplace/main.mo"
 		}
 	},
 	"networks": {
