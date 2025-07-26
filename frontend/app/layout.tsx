@@ -9,7 +9,9 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "TradeChain - Commodity Trading Platform",
   description: "Trade commodities with confidence on the blockchain",
-    generator: 'v0.dev'
+  icons: {
+    icon: "/images/tradechain-logo.png",
+  },
 }
 
 export default function RootLayout({
