@@ -2,10 +2,10 @@
 
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
-**Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)  
-**Canister ID:** [Canister ID on ICP Mainnet]   
-**Live Demo:** [Canister URL](https://tradechain.icp)  
-**Demo Video:** [10-minute walkthrough URL]
+**🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)  
+**🔗 Canister ID:** [Canister ID on ICP Mainnet]   
+**🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)   
+**🔗 Demo Video:** [10-minute walkthrough URL]
 
 ---
 
@@ -455,8 +455,8 @@ NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
 ## 👥 Team
 
 **Adams Tolani Victor** - Project Manager & Product Lead  
-**Lydia Solomon** - Product Designer & Ideator
-**Dominion Balogun Kehinde** - Frontend Developer
+**Lydia Solomon** - Product Designer & Ideator   
+**Dominion Balogun Kehinde** - Frontend Developer   
 **Olowu Timilehin** - Backend Developer
 
 ---
