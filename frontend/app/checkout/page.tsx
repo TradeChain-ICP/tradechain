@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   ]
 
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const shipping = 0 // Free shipping
+  const shipping: number = 0 // Free shipping
   const tax = subtotal * 0.08
   const total = subtotal + shipping + tax
 

@@ -92,7 +92,7 @@ module {
 
     // AI Investment Insight (for frontend AI recommendations)
     public type InvestmentInsight = {
-        type: Text; // "diversification", "timing", "risk"
+        insightType: Text; // "diversification", "timing", "risk"
         title: Text;
         description: Text;
         priority: Text; // "high", "medium", "low"

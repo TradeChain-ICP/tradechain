@@ -4,6 +4,8 @@ import Float "mo:base/Float";
 import Principal "mo:base/Principal";
 import Debug "mo:base/Debug";
 import Random "mo:base/Random";
+import Int "mo:base/Int";
+import Array "mo:base/Array";
 import Types "types";
 
 module {
@@ -16,7 +18,7 @@ module {
     public type PortfolioStats = Types.PortfolioStats;
     public type InvestmentInsight = Types.InvestmentInsight;
 
-    // Generate user ID from principal (shared with user management)
+    // Generate user ID from principal
     public func generateUserId(principal: Principal): Text {
         let principalText = Principal.toText(principal);
         "user_" # principalText
@@ -25,7 +27,6 @@ module {
     // Generate wallet address from principal
     public func generateWalletAddress(principal: Principal): Text {
         let principalText = Principal.toText(principal);
-        // In production, this would generate a proper ICP address
         principalText
     };
 
@@ -35,14 +36,19 @@ module {
         "txn_" # Int.toText(now)
     };
 
+    // Get anonymous principal for demo purposes
+    public func getAnonymousPrincipal(): Principal {
+        Principal.fromText("2vxsx-fae")
+    };
+
     // Validate wallet address format
     public func isValidAddress(address: Text): Bool {
         Text.size(address) > 10 and Text.contains(address, #char '-')
     };
 
     // Validate transaction amount
-    public func isValidAmount(amount: Float): Bool {
-        amount > 0.0 and amount <= 1000000.0 // Max 1M tokens
+    public func isValidAmount(_amount: Float): Bool {
+        _amount > 0.0 and _amount <= 1000000.0
     };
 
     // Get token symbol as text
@@ -75,13 +81,13 @@ module {
         }
     };
 
-    // Get current token price (mock data for demo)
+    // Get current token price
     public func getTokenPrice(tokenType: TokenType): Float {
         switch (tokenType) {
-            case (#ICP) { 7.0 }; // $7 per ICP
-            case (#ckBTC) { 43000.0 }; // $43,000 per BTC
-            case (#ckETH) { 2800.0 }; // $2,800 per ETH
-            case (#ckUSDC) { 1.0 }; // $1 per USDC
+            case (#ICP) { 7.0 };
+            case (#ckBTC) { 43000.0 };
+            case (#ckETH) { 2800.0 };
+            case (#ckUSDC) { 1.0 };
         }
     };
 
@@ -90,12 +96,18 @@ module {
         amount * getTokenPrice(tokenType)
     };
 
+    // Helper function to calculate sum of token values
+    private func calculateTotalUsdValue(tokens: [TokenBalance]): Float {
+        Array.foldLeft<TokenBalance, Float>(tokens, 0.0, func(acc: Float, token: TokenBalance): Float {
+            acc + token.usdValue
+        })
+    };
+
     // Create default wallet for new user
     public func createDefaultWallet(userId: Text, principal: Principal): WalletInfo {
         let now = Time.now();
         let address = generateWalletAddress(principal);
         
-        // Initialize with some demo tokens (for demo purposes)
         let tokens: [TokenBalance] = [
             {
                 symbol = "ICP";
@@ -131,15 +143,13 @@ module {
             }
         ];
 
-        let totalUsdValue = tokens.foldLeft(0.0, func(acc: Float, token: TokenBalance): Float {
-            acc + token.usdValue
-        });
+        let totalUsdValue = calculateTotalUsdValue(tokens);
 
         {
             userId = userId;
             principal = principal;
             address = address;
-            totalBalance = 1245.67; // ICP balance
+            totalBalance = 1245.67;
             totalUsdValue = totalUsdValue;
             tokens = tokens;
             createdAt = now;
@@ -147,7 +157,7 @@ module {
         }
     };
 
-    // Create demo wallet (matching frontend demo data)
+    // Create demo wallet
     public func createDemoWallet(userType: Text, principal: Principal): WalletInfo {
         let now = Time.now();
         let address = generateWalletAddress(principal);
@@ -194,7 +204,7 @@ module {
             totalBalance = 1245.67;
             totalUsdValue = 28009.69;
             tokens = tokens;
-            createdAt = now - (365 * 24 * 60 * 60 * 1000000000); // 1 year ago
+            createdAt = now - (365 * 24 * 60 * 60 * 1000000000);
             lastActivity = now;
         }
     };
@@ -211,23 +221,22 @@ module {
     public func calculatePortfolioStats(transactions: [Transaction], totalValue: Float): PortfolioStats {
         let totalTransactions = transactions.size();
         
-        // Calculate averages and totals
         let averageTransaction = if (totalTransactions > 0) {
-            let totalAmount = transactions.foldLeft(0.0, func(acc: Float, txn: Transaction): Float {
+            let totalAmount = Array.foldLeft<Transaction, Float>(transactions, 0.0, func(acc: Float, txn: Transaction): Float {
                 acc + txn.usdValue
             });
             totalAmount / Float.fromInt(totalTransactions)
         } else { 0.0 };
 
-        let largestTransaction = transactions.foldLeft(0.0, func(acc: Float, txn: Transaction): Float {
+        let largestTransaction = Array.foldLeft<Transaction, Float>(transactions, 0.0, func(acc: Float, txn: Transaction): Float {
             if (txn.usdValue > acc) { txn.usdValue } else { acc }
         });
 
         {
             totalValue = totalValue;
-            dayChange = 218.50; // Mock data
+            dayChange = 218.50;
             dayChangePercent = 2.5;
-            monthChange = 2750.00; // Mock data
+            monthChange = 2750.00;
             monthChangePercent = 12.5;
             totalTransactions = totalTransactions;
             averageTransaction = averageTransaction;
@@ -235,25 +244,25 @@ module {
         }
     };
 
-    // Generate investment insights (AI recommendations)
-    public func generateInvestmentInsights(wallet: WalletInfo): [InvestmentInsight] {
+    // Generate investment insights
+    public func generateInvestmentInsights(_wallet: WalletInfo): [InvestmentInsight] {
         [
             {
-                type = "diversification";
+                insightType = "diversification";
                 title = "Diversification Opportunity";
                 description = "Consider adding more agricultural commodities to balance your precious metals holdings.";
                 priority = "medium";
                 color = "green";
             },
             {
-                type = "timing";
+                insightType = "timing";
                 title = "Market Timing";
                 description = "Gold prices are trending upward. Good time to increase your position.";
                 priority = "high";
                 color = "blue";
             },
             {
-                type = "risk";
+                insightType = "risk";
                 title = "Risk Assessment";
                 description = "Your portfolio has moderate risk. Consider adding stable assets like timber.";
                 priority = "low";
@@ -263,7 +272,7 @@ module {
     };
 
     // Calculate transaction fee
-    public func calculateFee(amount: Float, tokenType: TokenType): Float {
+    public func calculateFee(_amount: Float, tokenType: TokenType): Float {
         switch (tokenType) {
             case (#ICP) { 0.0001 };
             case (#ckBTC) { 0.00001 };
@@ -275,7 +284,7 @@ module {
     // Validate sufficient balance
     public func hasSufficientBalance(wallet: WalletInfo, amount: Float, tokenType: TokenType): Bool {
         let tokenSymbol = tokenTypeToText(tokenType);
-        let tokenBalance = wallet.tokens.find(func(token: TokenBalance): Bool {
+        let tokenBalance = Array.find<TokenBalance>(wallet.tokens, func(token: TokenBalance): Bool {
             token.symbol == tokenSymbol
         });
         

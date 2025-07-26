@@ -28,7 +28,7 @@ actor Wallet {
     // Storage
     private stable var walletEntries: [(Text, WalletInfo)] = [];
     private stable var transactionEntries: [(Text, Transaction)] = [];
-    private stable var userTransactionEntries: [(Text, [Text])] = []; // userId -> [transactionIds]
+    private stable var userTransactionEntries: [(Text, [Text])] = [];
 
     private var wallets = HashMap.HashMap<Text, WalletInfo>(10, Text.equal, Text.hash);
     private var transactions = HashMap.HashMap<Text, Transaction>(100, Text.equal, Text.hash);
@@ -53,20 +53,18 @@ actor Wallet {
     private func initializeDemoWallets() {
         let dummyPrincipal = Utils.getAnonymousPrincipal();
         
-        // Create demo wallets
         let buyerWallet = Utils.createDemoWallet("buyer", dummyPrincipal);
         let sellerWallet = Utils.createDemoWallet("seller", dummyPrincipal);
         
         wallets.put(buyerWallet.userId, buyerWallet);
         wallets.put(sellerWallet.userId, sellerWallet);
         
-        // Create demo transactions
         createDemoTransactions();
         
         Utils.logInfo("Demo wallets initialized");
     };
 
-    // Create demo transactions (matching frontend mock data)
+    // Create demo transactions
     private func createDemoTransactions() {
         let now = Time.now();
         let buyerUserId = "wallet_buyer_demo";
@@ -82,7 +80,7 @@ actor Wallet {
                 fromAddress = ?"user_wallet_addr";
                 toAddress = ?"seller_wallet_addr";
                 status = #Completed;
-                timestamp = now - (24 * 60 * 60 * 1000000000); // 1 day ago
+                timestamp = now - (24 * 60 * 60 * 1000000000);
                 description = "Gold Bullion Purchase";
                 fee = 0.01;
                 hash = ?"0x1234...abcd";
@@ -97,7 +95,7 @@ actor Wallet {
                 fromAddress = ?"external_wallet";
                 toAddress = ?"user_wallet_addr";
                 status = #Completed;
-                timestamp = now - (2 * 24 * 60 * 60 * 1000000000); // 2 days ago
+                timestamp = now - (2 * 24 * 60 * 60 * 1000000000);
                 description = "ICP Deposit";
                 fee = 0.0001;
                 hash = ?"0x5678...efgh";
@@ -112,7 +110,7 @@ actor Wallet {
                 fromAddress = ?"user_wallet_addr";
                 toAddress = ?"seller_wallet_addr";
                 status = #Completed;
-                timestamp = now - (4 * 24 * 60 * 60 * 1000000000); // 4 days ago
+                timestamp = now - (4 * 24 * 60 * 60 * 1000000000);
                 description = "Silver Bars Purchase";
                 fee = 0.01;
                 hash = ?"0x9abc...ijkl";
@@ -127,7 +125,7 @@ actor Wallet {
                 fromAddress = ?"user_wallet_addr";
                 toAddress = ?"external_wallet";
                 status = #Completed;
-                timestamp = now - (6 * 24 * 60 * 60 * 1000000000); // 6 days ago
+                timestamp = now - (6 * 24 * 60 * 60 * 1000000000);
                 description = "ICP Withdrawal";
                 fee = 0.0001;
                 hash = ?"0xdefg...mnop";
@@ -142,19 +140,17 @@ actor Wallet {
                 fromAddress = ?"user_wallet_addr";
                 toAddress = ?"seller_wallet_addr";
                 status = #Completed;
-                timestamp = now - (11 * 24 * 60 * 60 * 1000000000); // 11 days ago
+                timestamp = now - (11 * 24 * 60 * 60 * 1000000000);
                 description = "Agricultural Products";
                 fee = 0.01;
                 hash = ?"0xqrst...uvwx";
             }
         ];
 
-        // Store transactions
         for (txn in demoTransactions.vals()) {
             transactions.put(txn.id, txn);
         };
 
-        // Map user to transactions
         let transactionIds = Array.map<Transaction, Text>(demoTransactions, func(txn: Transaction): Text { txn.id });
         userTransactions.put(buyerUserId, transactionIds);
     };
@@ -162,9 +158,9 @@ actor Wallet {
     // Call initialization
     initializeDemoWallets();
 
-    // PUBLIC FUNCTIONS (Frontend Integration)
+    // PUBLIC FUNCTIONS
 
-    // 1. GET WALLET INFO (matches frontend wallet page)
+    // 1. GET WALLET INFO
     public shared(msg) func getWalletInfo(): async Result<WalletInfo, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -183,14 +179,13 @@ actor Wallet {
         }
     };
 
-    // 2. CREATE WALLET (for new users)
+    // 2. CREATE WALLET
     public shared(msg) func createWallet(): async Result<WalletInfo, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
 
         Utils.logInfo("Creating wallet for: " # userId);
 
-        // Check if wallet already exists
         switch (wallets.get(userId)) {
             case (?_existingWallet) {
                 #err(#InternalError("Wallet already exists"))
@@ -204,7 +199,7 @@ actor Wallet {
         }
     };
 
-    // 3. GET WALLET BY DEMO USER (for frontend demo)
+    // 3. GET DEMO WALLET
     public func getDemoWallet(userType: Text): async Result<WalletInfo, WalletError> {
         let userId = "wallet_" # userType # "_demo";
         Utils.logInfo("Getting demo wallet for: " # userId);
@@ -212,7 +207,6 @@ actor Wallet {
         switch (wallets.get(userId)) {
             case (?wallet) { #ok(wallet) };
             case null {
-                // Create demo wallet if it doesn't exist
                 let dummyPrincipal = Utils.getAnonymousPrincipal();
                 let demoWallet = Utils.createDemoWallet(userType, dummyPrincipal);
                 wallets.put(userId, demoWallet);
@@ -221,14 +215,13 @@ actor Wallet {
         }
     };
 
-    // 4. TRANSFER TOKENS (matches frontend transfer functionality)
+    // 4. TRANSFER TOKENS
     public shared(msg) func transfer(request: TransferRequest): async Result<Transaction, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
 
         Utils.logInfo("Transfer request from: " # userId);
 
-        // Validate inputs
         if (not Utils.isValidAddress(request.toAddress)) {
             return #err(#InvalidAddress);
         };
@@ -237,15 +230,12 @@ actor Wallet {
             return #err(#InvalidAmount);
         };
 
-        // Get user wallet
         switch (wallets.get(userId)) {
             case (?wallet) {
-                // Check sufficient balance
                 if (not Utils.hasSufficientBalance(wallet, request.amount, request.tokenType)) {
                     return #err(#InsufficientFunds);
                 };
 
-                // Create transaction
                 let txnId = Utils.generateTransactionId();
                 let fee = Utils.calculateFee(request.amount, request.tokenType);
                 let usdValue = Utils.calculateUsdValue(request.amount, request.tokenType);
@@ -259,17 +249,15 @@ actor Wallet {
                     usdValue = usdValue;
                     fromAddress = ?wallet.address;
                     toAddress = ?request.toAddress;
-                    status = #Completed; // Simplified for demo
+                    status = #Completed;
                     timestamp = Time.now();
                     description = switch (request.description) { case (?desc) { desc }; case null { "Token Transfer" } };
                     fee = fee;
-                    hash = ?"0x" # txnId;
+                    hash = ?("0x" # txnId); // FIXED: Wrap in ?() for optional
                 };
 
-                // Store transaction
                 transactions.put(txnId, transaction);
                 
-                // Update user transactions
                 let currentTxns = switch (userTransactions.get(userId)) {
                     case (?txns) { txns };
                     case null { [] };
@@ -286,7 +274,7 @@ actor Wallet {
         }
     };
 
-    // 5. DEPOSIT TOKENS (matches frontend deposit functionality)
+    // 5. DEPOSIT TOKENS
     public shared(msg) func deposit(request: DepositRequest): async Result<Transaction, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -297,10 +285,8 @@ actor Wallet {
             return #err(#InvalidAmount);
         };
 
-        // Get user wallet
         switch (wallets.get(userId)) {
             case (?wallet) {
-                // Create deposit transaction
                 let txnId = Utils.generateTransactionId();
                 let fee = Utils.calculateFee(request.amount, request.tokenType);
                 let usdValue = Utils.calculateUsdValue(request.amount, request.tokenType);
@@ -314,17 +300,15 @@ actor Wallet {
                     usdValue = usdValue;
                     fromAddress = ?"external_address";
                     toAddress = ?wallet.address;
-                    status = #Completed; // Simplified for demo
+                    status = #Completed;
                     timestamp = Time.now();
                     description = Utils.getTokenName(request.tokenType) # " Deposit";
                     fee = fee;
-                    hash = ?"0x" # txnId;
+                    hash = ?("0x" # txnId); // FIXED: Wrap in ?() for optional
                 };
 
-                // Store transaction
                 transactions.put(txnId, transaction);
                 
-                // Update user transactions
                 let currentTxns = switch (userTransactions.get(userId)) {
                     case (?txns) { txns };
                     case null { [] };
@@ -341,14 +325,13 @@ actor Wallet {
         }
     };
 
-    // 6. WITHDRAW TOKENS (matches frontend withdrawal functionality)
+    // 6. WITHDRAW TOKENS
     public shared(msg) func withdraw(request: WithdrawalRequest): async Result<Transaction, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
 
         Utils.logInfo("Withdrawal request from: " # userId);
 
-        // Validate inputs
         if (not Utils.isValidAddress(request.toAddress)) {
             return #err(#InvalidAddress);
         };
@@ -357,15 +340,12 @@ actor Wallet {
             return #err(#InvalidAmount);
         };
 
-        // Get user wallet
         switch (wallets.get(userId)) {
             case (?wallet) {
-                // Check sufficient balance
                 if (not Utils.hasSufficientBalance(wallet, request.amount, request.tokenType)) {
                     return #err(#InsufficientFunds);
                 };
 
-                // Create withdrawal transaction
                 let txnId = Utils.generateTransactionId();
                 let fee = Utils.calculateFee(request.amount, request.tokenType);
                 let usdValue = Utils.calculateUsdValue(request.amount, request.tokenType);
@@ -379,17 +359,15 @@ actor Wallet {
                     usdValue = usdValue;
                     fromAddress = ?wallet.address;
                     toAddress = ?request.toAddress;
-                    status = #Completed; // Simplified for demo
+                    status = #Completed;
                     timestamp = Time.now();
                     description = Utils.getTokenName(request.tokenType) # " Withdrawal";
                     fee = fee;
-                    hash = ?"0x" # txnId;
+                    hash = ?("0x" # txnId); // FIXED: Wrap in ?() for optional
                 };
 
-                // Store transaction
                 transactions.put(txnId, transaction);
                 
-                // Update user transactions
                 let currentTxns = switch (userTransactions.get(userId)) {
                     case (?txns) { txns };
                     case null { [] };
@@ -406,7 +384,7 @@ actor Wallet {
         }
     };
 
-    // 7. GET TRANSACTION HISTORY (matches frontend transaction list)
+    // 7. GET TRANSACTION HISTORY
     public shared(msg) func getTransactionHistory(): async Result<[Transaction], WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -422,7 +400,6 @@ actor Wallet {
             transactions.get(txnId)
         });
 
-        // Sort by timestamp (newest first)
         let sortedTxns = Array.sort<Transaction>(userTxns, func(a: Transaction, b: Transaction): { #less; #equal; #greater } {
             if (a.timestamp > b.timestamp) { #less }
             else if (a.timestamp < b.timestamp) { #greater }
@@ -432,7 +409,7 @@ actor Wallet {
         #ok(sortedTxns)
     };
 
-    // 8. GET DEMO TRANSACTION HISTORY (for frontend demo)
+    // 8. GET DEMO TRANSACTION HISTORY
     public func getDemoTransactionHistory(userType: Text): async Result<[Transaction], WalletError> {
         let userId = "wallet_" # userType # "_demo";
         Utils.logInfo("Getting demo transaction history for: " # userId);
@@ -446,7 +423,6 @@ actor Wallet {
             transactions.get(txnId)
         });
 
-        // Sort by timestamp (newest first)
         let sortedTxns = Array.sort<Transaction>(userTxns, func(a: Transaction, b: Transaction): { #less; #equal; #greater } {
             if (a.timestamp > b.timestamp) { #less }
             else if (a.timestamp < b.timestamp) { #greater }
@@ -456,7 +432,7 @@ actor Wallet {
         #ok(sortedTxns)
     };
 
-    // 9. GET PORTFOLIO STATS (matches frontend portfolio statistics)
+    // 9. GET PORTFOLIO STATS
     public shared(msg) func getPortfolioStats(): async Result<PortfolioStats, WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -483,7 +459,7 @@ actor Wallet {
         }
     };
 
-    // 10. GET INVESTMENT INSIGHTS (matches frontend AI insights)
+    // 10. GET INVESTMENT INSIGHTS
     public shared(msg) func getInvestmentInsights(): async Result<[InvestmentInsight], WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -501,7 +477,7 @@ actor Wallet {
         }
     };
 
-    // 11. GET TOKEN BALANCES (for frontend token list)
+    // 11. GET TOKEN BALANCES
     public shared(msg) func getTokenBalances(): async Result<[TokenBalance], WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -512,7 +488,7 @@ actor Wallet {
         }
     };
 
-    // 12. UPDATE TOKEN BALANCE (for purchases/sales integration)
+    // 12. UPDATE TOKEN BALANCE
     public shared(msg) func updateTokenBalance(tokenType: TokenType, amount: Float, operation: Text): async Result<(), WalletError> {
         let caller = msg.caller;
         let userId = Utils.generateUserId(caller);
@@ -521,8 +497,6 @@ actor Wallet {
 
         switch (wallets.get(userId)) {
             case (?wallet) {
-                // This would update the specific token balance
-                // For demo purposes, we'll just log the operation
                 Utils.logInfo("Token balance update: " # operation # " " # Float.toText(amount) # " " # Utils.tokenTypeToText(tokenType));
                 #ok(())
             };
@@ -534,12 +508,10 @@ actor Wallet {
 
     // UTILITY FUNCTIONS
 
-    // Get all wallets (admin function)
     public query func getAllWallets(): async [WalletInfo] {
         Iter.toArray(wallets.vals())
     };
 
-    // Get wallet by address
     public query func getWalletByAddress(address: Text): async ?WalletInfo {
         let walletsArray = Iter.toArray(wallets.vals());
         Array.find<WalletInfo>(walletsArray, func(wallet: WalletInfo): Bool {
@@ -547,7 +519,6 @@ actor Wallet {
         })
     };
 
-    // Get system stats
     public query func getSystemStats(): async {
         totalWallets: Nat;
         totalTransactions: Nat;
@@ -557,13 +528,12 @@ actor Wallet {
         let allWallets = Iter.toArray(wallets.vals());
         let allTransactions = Iter.toArray(transactions.vals());
         
-        let totalVolume = allTransactions.foldLeft(0.0, func(acc: Float, txn: Transaction): Float {
+        let totalVolume = Array.foldLeft<Transaction, Float>(allTransactions, 0.0, func(acc: Float, txn: Transaction): Float {
             acc + txn.usdValue
         });
 
-        // Count active wallets (activity in last 30 days)
         let thirtyDaysAgo = Time.now() - (30 * 24 * 60 * 60 * 1000000000);
-        let activeWallets = allWallets.foldLeft(0, func(acc: Nat, wallet: WalletInfo): Nat {
+        let activeWallets = Array.foldLeft<WalletInfo, Nat>(allWallets, 0, func(acc: Nat, wallet: WalletInfo): Nat {
             if (wallet.lastActivity > thirtyDaysAgo) { acc + 1 } else { acc }
         });
 
@@ -575,7 +545,6 @@ actor Wallet {
         }
     };
 
-    // Health check
     public query func healthCheck(): async Text {
         "Wallet canister is running. Total wallets: " # debug_show(wallets.size())
     };
