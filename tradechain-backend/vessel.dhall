@@ -10,6 +10,16 @@ let packages = [
   , repo = "https://github.com/kritzcreek/motoko-matchers"
   , version = "v1.2.0"
   , dependencies = [ "base" ]
+  },
+  { name = "uuid"
+  , repo = "https://github.com/aviate-labs/uuid.mo"
+  , version = "v0.2.0"
+  , dependencies = [ "base" ]
+  },
+  { name = "map"
+  , repo = "https://github.com/ZhenyaUsenko/motoko-hash-map"
+  , version = "v8.1.0"
+  , dependencies = [ "base" ]
   }
 ]
 
