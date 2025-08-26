@@ -12,6 +12,10 @@
 		"marketplace": {
 			"type": "motoko",
 			"main": "src/marketplace/main.mo"
+		},
+		"escrow": {
+			"type": "motoko",
+			"main": "src/escrow/main.mo"
 		}
 	},
 	"networks": {

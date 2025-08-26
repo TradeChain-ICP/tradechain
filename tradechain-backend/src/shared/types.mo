@@ -16,6 +16,7 @@ module {
         #Buyer;
         #Seller;
         #Admin;
+        #Arbitrator; // NEW: For dispute resolution
     };
 
     public type KYCStatus = {
@@ -44,6 +45,9 @@ module {
         #Purchase;
         #Sale;
         #Transfer;
+        #EscrowFund; // NEW: Escrow funding
+        #EscrowRelease; // NEW: Escrow release
+        #EscrowRefund; // NEW: Escrow refund
     };
 
     public type TransactionStatus = {
@@ -75,6 +79,9 @@ module {
         #Delivered;
         #Cancelled;
         #Disputed;
+        #EscrowCreated; // NEW: Escrow created for order
+        #EscrowFunded; // NEW: Escrow has been funded
+        #EscrowReleased; // NEW: Escrow funds released
     };
 
     public type ListingStatus = {
@@ -85,7 +92,26 @@ module {
         #Removed;
     };
 
-    // Error Types
+    // Escrow Types (NEW SECTION)
+    public type EscrowStatus = {
+        #Created;
+        #Funded;
+        #Active;
+        #Disputed;
+        #Resolved;
+        #Released;
+        #Refunded;
+        #Cancelled;
+    };
+
+    public type DisputeStatus = {
+        #Open;
+        #InReview;
+        #Resolved;
+        #Closed;
+    };
+
+    // Error Types (UPDATED)
     public type UserError = {
         #UserNotFound;
         #UserAlreadyExists;
@@ -119,7 +145,27 @@ module {
         #InternalError: Text;
     };
 
-    // Notification Types
+    public type EscrowError = {
+        #EscrowNotFound;
+        #DisputeNotFound;
+        #InsufficientFunds;
+        #EscrowAlreadyFunded;
+        #EscrowNotFunded;
+        #EscrowExpired;
+        #InvalidAmount;
+        #InvalidCondition;
+        #ConditionNotMet;
+        #DisputeAlreadyExists;
+        #UnauthorizedAccess;
+        #InvalidParty;
+        #EscrowNotActive;
+        #AlreadyResolved;
+        #InvalidResolution;
+        #Unauthorized;
+        #InternalError: Text;
+    };
+
+    // Notification Types (UPDATED)
     public type NotificationType = {
         #Welcome;
         #KYCApproved;
@@ -134,5 +180,14 @@ module {
         #OrderShipped;
         #OrderDelivered;
         #PaymentReceived;
+        // NEW: Escrow notifications
+        #EscrowCreated;
+        #EscrowFunded;
+        #EscrowReleased;
+        #EscrowRefunded;
+        #DisputeCreated;
+        #DisputeResolved;
+        #ConditionFulfilled;
+        #AutoReleaseWarning;
     };
 }
