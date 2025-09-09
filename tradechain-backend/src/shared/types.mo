@@ -1,3 +1,4 @@
+// src/shared/types.mo
 import Time "mo:base/Time";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";

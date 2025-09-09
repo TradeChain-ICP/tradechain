@@ -1,3 +1,4 @@
+// src/wallet/main.mo
 import Time "mo:base/Time";
 import Text "mo:base/Text";
 import Result "mo:base/Result";
@@ -9,7 +10,7 @@ import Float "mo:base/Float";
 import Types "types";
 import Utils "utils";
 
-actor Wallet {
+persistent actor Wallet {
     // Type imports
     type WalletInfo = Types.WalletInfo;
     type TokenBalance = Types.TokenBalance;
@@ -30,9 +31,9 @@ actor Wallet {
     private stable var transactionEntries: [(Text, Transaction)] = [];
     private stable var userTransactionEntries: [(Text, [Text])] = [];
 
-    private var wallets = HashMap.HashMap<Text, WalletInfo>(10, Text.equal, Text.hash);
-    private var transactions = HashMap.HashMap<Text, Transaction>(100, Text.equal, Text.hash);
-    private var userTransactions = HashMap.HashMap<Text, [Text]>(10, Text.equal, Text.hash);
+    private transient var wallets = HashMap.HashMap<Text, WalletInfo>(10, Text.equal, Text.hash);
+    private transient var transactions = HashMap.HashMap<Text, Transaction>(100, Text.equal, Text.hash);
+    private transient var userTransactions = HashMap.HashMap<Text, [Text]>(10, Text.equal, Text.hash);
 
     // Initialize system
     system func preupgrade() {

@@ -1,3 +1,4 @@
+// src/user_management/types.mo
 import Time "mo:base/Time";
 import SharedTypes "../shared/types";
 
