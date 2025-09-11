@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(fullUser);
             localStorage?.setItem('tradechain_user', JSON.stringify(fullUser));
             const dashboardPath =
-              parsed.role === 'buyer' ? '/buyer-dashboard' : '/seller-dashboard';
+              parsed.role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
             router.push(dashboardPath);
             return;
           }
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage?.removeItem('tradechain_user_temp');
 
       // Redirect to appropriate dashboard
-      const dashboardPath = role === 'buyer' ? '/buyer-dashboard' : '/seller-dashboard';
+      const dashboardPath = role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
       router.push(dashboardPath);
     } catch (error) {
       throw new Error('Failed to set user role');
@@ -206,7 +206,7 @@ export function ProtectedRoute({
       }
 
       if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        const defaultPath = user.role === 'buyer' ? '/buyer-dashboard' : '/seller-dashboard';
+        const defaultPath = user.role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
         router.push(redirectTo || defaultPath);
         return;
       }

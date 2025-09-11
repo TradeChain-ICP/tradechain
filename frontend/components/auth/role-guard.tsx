@@ -1,3 +1,4 @@
+// components/auth/role-guard.tsx
 'use client';
 
 import type React from 'react';
@@ -19,7 +20,7 @@ export function RoleGuard({ children, allowedRoles, fallbackPath }: RoleGuardPro
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
-        router.push('/login');
+        router.push('/connect');
         return;
       }
 
