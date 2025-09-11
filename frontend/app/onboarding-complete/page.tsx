@@ -24,7 +24,7 @@ export default function OnboardingCompletePage() {
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold">Onboarding Complete!</h1>
+          <h1 className="mt-4 text-2xl font-bold">KYC Submitted!</h1>
           <p className="mt-2 text-muted-foreground">
             Your KYC verification is being processed. We'll notify you once it's approved.
           </p>
@@ -74,37 +74,6 @@ export default function OnboardingCompletePage() {
             </Link>
           </CardFooter>
         </Card>
-
-        <div className="mt-8 space-y-4">
-          <h2 className="text-lg font-medium">While you wait, you can:</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Image src="/placeholder.svg?height=24&width=24" alt="Wallet" width={24} height={24} />
-                </div>
-                <h3 className="font-medium">Set Up Your Wallet</h3>
-                <p className="text-sm text-muted-foreground">Configure your ICP wallet for trading</p>
-                <Link href="/wallet" className="mt-2 text-sm text-primary hover:underline">
-                  Get Started
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Image src="/placeholder.svg?height=24&width=24" alt="Learn" width={24} height={24} />
-                </div>
-                <h3 className="font-medium">Learn About Trading</h3>
-                <p className="text-sm text-muted-foreground">Explore our guides on commodity trading</p>
-                <Link href="/help" className="mt-2 text-sm text-primary hover:underline">
-                  View Guides
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
       </div>
     </div>
   )
