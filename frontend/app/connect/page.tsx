@@ -63,14 +63,13 @@ export default function ConnectPage() {
           />
         </div>
         <div className="relative z-20 flex items-center text-lg font-medium">
-          <Image
-            src="/images/tradechain-logo.png"
-            alt="TradeChain Logo"
-            width={32}
-            height={32}
-            className="mr-2 rounded-md"
-          />
-          TradeChain
+          <Link
+            href="/"
+            className="text-2xl md:text-3xl font-extrabold tracking-tight text-primary hover:text-primary/90 transition-colors"
+          >
+            <span className="text-primary">Trade</span>
+            <span className="text-foreground dark:text-foreground/80">Chain</span>
+          </Link>
         </div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
