@@ -1,15 +1,14 @@
-"use client"
+'use client';
 
-import type React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { useState } from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import type React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +16,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
 import {
   BarChart3,
   Bell,
@@ -42,149 +41,163 @@ import {
   ChevronsLeft,
   ChevronsRight,
   TrendingUp,
-} from "lucide-react"
-import { Logo } from "@/components/logo"
-import { ColorModeSwitcher } from "@/components/color-mode-switcher"
-import { CartDrawer } from "@/components/cart/cart-drawer"
-import { signOut } from "next-auth/react"
+} from 'lucide-react';
+import { Logo } from '@/components/logo';
+import { ColorModeSwitcher } from '@/components/color-mode-switcher';
+import { CartDrawer } from '@/components/cart/cart-drawer';
+import { useAuth } from '@/contexts/auth-context';
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
-  userRole?: "buyer" | "seller"
+  children: React.ReactNode;
+  userRole?: 'buyer' | 'seller';
 }
 
 const buyerNavItems = [
   {
-    title: "Dashboard",
-    href: "/buyer-dashboard",
+    title: 'Dashboard',
+    href: '/buyer-dashboard',
     icon: Home,
   },
   {
-    title: "Marketplace",
-    href: "/marketplace",
+    title: 'Marketplace',
+    href: '/marketplace',
     icon: ShoppingCart,
   },
   {
-    title: "Portfolio",
-    href: "/portfolio",
+    title: 'Portfolio',
+    href: '/portfolio',
     icon: TrendingUp,
   },
   {
-    title: "Orders",
-    href: "/orders",
+    title: 'Orders',
+    href: '/orders',
     icon: Package,
   },
   {
-    title: "Favorites",
-    href: "/favorites",
+    title: 'Favorites',
+    href: '/favorites',
     icon: Heart,
   },
   {
-    title: "Purchase History",
-    href: "/purchase-history",
+    title: 'Purchase History',
+    href: '/purchase-history',
     icon: History,
   },
   {
-    title: "Wallet",
-    href: "/wallet",
+    title: 'Wallet',
+    href: '/wallet',
     icon: Wallet,
   },
   {
-    title: "AI Insights",
-    href: "/ai-insights",
+    title: 'AI Insights',
+    href: '/ai-insights',
     icon: Zap,
   },
   {
-    title: "Messages",
-    href: "/messages",
+    title: 'Messages',
+    href: '/messages',
     icon: MessageSquare,
   },
-]
+];
 
 const sellerNavItems = [
   {
-    title: "Dashboard",
-    href: "/seller-dashboard",
+    title: 'Dashboard',
+    href: '/seller-dashboard',
     icon: Home,
   },
   {
-    title: "Add Product",
-    href: "/add-product",
+    title: 'Add Product',
+    href: '/add-product',
     icon: Plus,
   },
   {
-    title: "Inventory",
-    href: "/inventory",
+    title: 'Inventory',
+    href: '/inventory',
     icon: Package,
   },
   {
-    title: "Orders",
-    href: "/seller-orders",
+    title: 'Orders',
+    href: '/seller-orders',
     icon: ShoppingCart,
   },
   {
-    title: "Analytics",
-    href: "/analytics",
+    title: 'Analytics',
+    href: '/analytics',
     icon: BarChart3,
   },
   {
-    title: "Performance",
-    href: "/product-performance",
+    title: 'Performance',
+    href: '/product-performance',
     icon: Eye,
   },
   {
-    title: "Earnings",
-    href: "/earnings",
+    title: 'Earnings',
+    href: '/earnings',
     icon: DollarSign,
   },
   {
-    title: "Price Optimizer",
-    href: "/price-optimizer",
+    title: 'Price Optimizer',
+    href: '/price-optimizer',
     icon: Target,
   },
   {
-    title: "AI Insights",
-    href: "/ai-insights",
+    title: 'AI Insights',
+    href: '/ai-insights',
     icon: Zap,
   },
   {
-    title: "Messages",
-    href: "/messages",
+    title: 'Messages',
+    href: '/messages',
     icon: MessageSquare,
   },
-]
+];
 
 const bottomNavItems = [
   {
-    title: "Profile",
-    href: "/profile",
+    title: 'Profile',
+    href: '/profile',
     icon: Users,
   },
   {
-    title: "Settings",
-    href: "/settings",
+    title: 'Settings',
+    href: '/settings',
     icon: Settings,
   },
   {
-    title: "Help",
-    href: "/help",
+    title: 'Help',
+    href: '/help',
     icon: HelpCircle,
   },
-]
+];
 
 export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
-  const pathname = usePathname()
-  const { data: session } = useSession()
-  const role = userRole || session?.user?.role || "buyer"
-  const navItems = role === "seller" ? sellerNavItems : buyerNavItems
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const pathname = usePathname();
+  const { user, disconnect } = useAuth();
+  const role = userRole || user?.role || 'buyer';
+  const navItems = role === 'seller' ? sellerNavItems : buyerNavItems;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: "/" })
-  }
+    disconnect();
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return 'User';
+    return `${user.firstName} ${user.lastName}`.trim() || 'User';
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    const firstName = user.firstName || '';
+    const lastName = user.lastName || '';
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+  };
 
   const Sidebar = ({ className, isMobile = false }: { className?: string; isMobile?: boolean }) => (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn('flex h-full flex-col', className)}>
       {/* Logo Section */}
       <div className="flex h-14 items-center border-b px-4">
         {!sidebarCollapsed || isMobile ? (
@@ -202,12 +215,12 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
           {navItems.map((item) => (
             <Button
               key={item.href}
-              variant={pathname === item.href ? "secondary" : "ghost"}
-              className={cn("w-full justify-start", sidebarCollapsed && !isMobile && "px-2")}
+              variant={pathname === item.href ? 'secondary' : 'ghost'}
+              className={cn('w-full justify-start', sidebarCollapsed && !isMobile && 'px-2')}
               asChild
             >
               <Link href={item.href}>
-                <item.icon className={cn("h-4 w-4", !sidebarCollapsed || isMobile ? "mr-2" : "")} />
+                <item.icon className={cn('h-4 w-4', !sidebarCollapsed || isMobile ? 'mr-2' : '')} />
                 {(!sidebarCollapsed || isMobile) && item.title}
               </Link>
             </Button>
@@ -221,12 +234,12 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
           {bottomNavItems.map((item) => (
             <Button
               key={item.href}
-              variant={pathname === item.href ? "secondary" : "ghost"}
-              className={cn("w-full justify-start", sidebarCollapsed && !isMobile && "px-2")}
+              variant={pathname === item.href ? 'secondary' : 'ghost'}
+              className={cn('w-full justify-start', sidebarCollapsed && !isMobile && 'px-2')}
               asChild
             >
               <Link href={item.href}>
-                <item.icon className={cn("h-4 w-4", !sidebarCollapsed || isMobile ? "mr-2" : "")} />
+                <item.icon className={cn('h-4 w-4', !sidebarCollapsed || isMobile ? 'mr-2' : '')} />
                 {(!sidebarCollapsed || isMobile) && item.title}
               </Link>
             </Button>
@@ -239,15 +252,16 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className={cn("w-full justify-start p-2", sidebarCollapsed && !isMobile && "px-2")}
+                className={cn('w-full justify-start p-2', sidebarCollapsed && !isMobile && 'px-2')}
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={session?.user?.image || ""} />
-                  <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {getUserInitials()}
+                  </AvatarFallback>
                 </Avatar>
                 {(!sidebarCollapsed || isMobile) && (
                   <div className="ml-2 flex flex-col items-start">
-                    <span className="text-sm font-medium">{session?.user?.name || "User"}</span>
+                    <span className="text-sm font-medium">{getUserDisplayName()}</span>
                     <span className="text-xs text-muted-foreground capitalize">{role}</span>
                   </div>
                 )}
@@ -278,7 +292,7 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -302,8 +316,16 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
 
           {/* Desktop Collapse Button */}
           <div className="hidden lg:flex mr-4">
-            <Button variant="ghost" size="icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
-              {sidebarCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              {sidebarCollapsed ? (
+                <ChevronsRight className="h-4 w-4" />
+              ) : (
+                <ChevronsLeft className="h-4 w-4" />
+              )}
             </Button>
           </div>
 
@@ -314,7 +336,7 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
 
           <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center space-x-2">
-              {role === "buyer" && (
+              {role === 'buyer' && (
                 <CartDrawer>
                   <Button variant="ghost" size="icon" className="relative">
                     <ShoppingCart className="h-5 w-5" />
@@ -338,8 +360,8 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
         {/* Desktop Sidebar */}
         <aside
           className={cn(
-            "hidden lg:block border-r bg-background transition-all duration-300",
-            sidebarCollapsed ? "w-16" : "w-64",
+            'hidden lg:block border-r bg-background transition-all duration-300',
+            sidebarCollapsed ? 'w-16' : 'w-64'
           )}
         >
           <div className="sticky top-14 h-[calc(100vh-3.5rem)]">
@@ -357,7 +379,7 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
           {navItems.slice(0, 4).map((item) => (
             <Button
               key={item.href}
-              variant={pathname === item.href ? "secondary" : "ghost"}
+              variant={pathname === item.href ? 'secondary' : 'ghost'}
               size="sm"
               className="flex flex-col h-12 px-2"
               asChild
@@ -403,5 +425,5 @@ export function DashboardLayout({ children, userRole }: DashboardLayoutProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
