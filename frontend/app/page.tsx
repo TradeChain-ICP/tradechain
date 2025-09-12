@@ -111,10 +111,10 @@ export default function LandingPage() {
                 About
               </Link>
               <Link
-                href="#docs"
+                href="/support"
                 className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full"
               >
-                Docs
+                Support
               </Link>
             </nav>
 
@@ -200,11 +200,11 @@ export default function LandingPage() {
                 About
               </Link>
               <Link
-                href="#docs"
+                href="/support"
                 className="py-3 text-base font-semibold text-muted-foreground hover:text-foreground transition-colors border-b border-border/50"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Docs
+                Support
               </Link>
 
               <div className="pt-6 border-t border-border">

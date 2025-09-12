@@ -64,8 +64,7 @@ export default function RoleSelectionPage() {
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-4xl font-bold">Choose Your Role</h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Select how you want to participate in TradeChain’s marketplace. Don’t worry, you can
-              change this anytime in your settings.
+              Select how you want to participate in TradeChain’s marketplace.
             </p>
           </div>
 
@@ -209,11 +208,6 @@ export default function RoleSelectionPage() {
                 </>
               )}
             </Button>
-            {selectedRole && (
-              <p className="text-sm text-muted-foreground mt-4">
-                You can change your role anytime in account settings
-              </p>
-            )}
           </div>
         </div>
       </main>
