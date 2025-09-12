@@ -134,7 +134,7 @@ export default function KYCVerificationPage() {
       });
 
       // Redirect based on user role
-      const redirectPath = user?.role === 'seller' ? '/dashboard/seller' : '/dashboard/buyer';
+      const redirectPath = '/dashboard/kyc/submitted';
 
       window.location.href = redirectPath;
     } catch (error) {
