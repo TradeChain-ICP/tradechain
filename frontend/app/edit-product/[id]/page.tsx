@@ -1,3 +1,4 @@
+// app/edit-product/[id]/page.tsx
 "use client"
 
 import type React from "react"

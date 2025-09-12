@@ -167,7 +167,7 @@ const sellerNavigation: NavigationItem[] = [
     href: '/dashboard/seller/price-optimizer',
     icon: Target,
     badge: 'Beta',
-    disabled: false,
+    disabled: true,
   },
   {
     name: 'AI Insights',
