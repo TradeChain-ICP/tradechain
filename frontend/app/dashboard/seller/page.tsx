@@ -405,26 +405,26 @@ function getOrderBadgeVariant(status: string) {
 function getInsightColor(type: string) {
   switch (type) {
     case 'opportunity':
-      return 'border-green-200 bg-green-50';
+      return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950';
     case 'warning':
-      return 'border-amber-200 bg-amber-50';
+      return 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950';
     case 'info':
-      return 'border-blue-200 bg-blue-50';
+      return 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950';
     default:
-      return 'border-gray-200 bg-gray-50';
+      return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900';
   }
 }
 
 function getInsightIconColor(type: string) {
   switch (type) {
     case 'opportunity':
-      return 'bg-green-100 text-green-600';
+      return 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400';
     case 'warning':
-      return 'bg-amber-100 text-amber-600';
+      return 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400';
     case 'info':
-      return 'bg-blue-100 text-blue-600';
+      return 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400';
     default:
-      return 'bg-gray-100 text-gray-600';
+      return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
   }
 }
 
