@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           principalId: IcpAgent.getPrincipal()?.toText() || 'dev_principal',
           firstName: 'Demo',
           lastName: 'User',
-          role: 'buyer',
+          role: 'seller',
           verified: false,
           walletAddress: 'demo_wallet_address',
           authMethod: 'internet-identity',
