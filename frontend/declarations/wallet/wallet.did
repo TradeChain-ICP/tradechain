@@ -1,6 +1,92 @@
+type Wallet = 
+ record {
+   createdAt: int;
+   euroBalance: nat;
+   icpBalance: nat;
+   isLocked: bool;
+   lastTransactionAt: int;
+   nairaBalance: nat;
+   owner: principal;
+   totalTransactions: nat;
+   usdBalance: nat;
+ };
+type TransactionType = 
+ variant {
+   deposit;
+   escrow;
+   payment;
+   refund;
+   transfer;
+   withdrawal;
+ };
+type TransactionStatus = 
+ variant {
+   cancelled;
+   completed;
+   failed;
+   pending;
+ };
+type Transaction = 
+ record {
+   amount: nat;
+   completedAt: opt int;
+   createdAt: int;
+   fromPrincipal: principal;
+   id: text;
+   memo: opt text;
+   status: TransactionStatus;
+   toPrincipal: principal;
+   tokenType: TokenType;
+   transactionType: TransactionType;
+ };
+type TokenType = 
+ variant {
+   Euro;
+   ICP;
+   Naira;
+   USD;
+ };
+type Result_3 = 
+ variant {
+   err: text;
+   ok: nat;
+ };
+type Result_2 = 
+ variant {
+   err: text;
+   ok: Wallet;
+ };
+type Result_1 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: text;
+ };
 service : {
-  healthCheck: () -> (record {
-                        status: text;
-                        timestamp: int;
-                      }) query;
+  addFunds: (amount: nat, tokenType: TokenType) -> (Result_1);
+  createWallet: () -> (Result_2);
+  getBalance: (tokenType: TokenType) -> (Result_3);
+  getTransaction: (txId: text) -> (opt Transaction) query;
+  getTransactionHistory: () -> (vec Transaction);
+  getWallet: () -> (Result_2);
+  getWalletStats: () ->
+   (record {
+      totalIcpLocked: nat;
+      totalTransactions: nat;
+      totalUsdLocked: nat;
+      totalWallets: nat;
+    }) query;
+  healthCheck: () ->
+   (record {
+      status: text;
+      timestamp: int;
+      walletCount: nat;
+    }) query;
+  setWalletLock: (owner: principal, isLocked: bool) -> (Result_1);
+  transfer: (to: principal, amount: nat, tokenType: TokenType, memo:
+   opt text) -> (Result);
 }

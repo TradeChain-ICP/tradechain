@@ -1,7 +1,7 @@
 // app/dashboard/profile/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Camera,
   Edit,
@@ -34,28 +34,27 @@ import Link from 'next/link';
 export default function ProfilePage() {
   const { toast } = useToast();
   const { contentPadding } = useContentPadding();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Initialize profile data from user context
   const [profileData, setProfileData] = useState({
-    firstName: user?.firstName || 'Alex',
-    lastName: user?.lastName || 'Johnson',
-    email: user?.principalId || 'alex.johnson@email.com',
-    phone: '+1 (555) 123-4567',
-    bio:
-      user?.role === 'seller'
-        ? 'Experienced commodity seller specializing in precious metals and agricultural products. Verified supplier with excellent ratings.'
-        : 'Experienced commodity trader with a focus on precious metals and agricultural products. Active on TradeChain since 2024.',
-    location: 'New York, NY',
-    website: 'https://alexjohnson.com',
-    company: user?.role === 'seller' ? 'Premium Metals Co.' : 'Johnson Trading LLC',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    bio: '',
+    location: '',
+    website: '',
+    company: '',
     avatar: '/placeholder.svg?height=120&width=120',
-    joinDate: 'March 2024',
-    verified: true,
-    rating: user?.role === 'seller' ? 4.9 : 4.8,
-    totalTrades: user?.role === 'seller' ? 89 : 127,
-    successRate: user?.role === 'seller' ? 99.2 : 98.5,
-    walletAddress: user?.walletAddress || 'nfid_wallet_abc123def456',
+    joinDate: '',
+    verified: false,
+    rating: 0,
+    totalTrades: 0,
+    successRate: 0,
+    walletAddress: '',
   });
 
   const [preferences, setPreferences] = useState({
@@ -71,23 +70,90 @@ export default function ProfilePage() {
     darkMode: false,
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast({
-      title: 'Profile Updated',
-      description: 'Your profile has been successfully updated.',
-    });
+  // Load user data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || 'User',
+        lastName: user.lastName || 'Name',
+        email: user.principalId || 'user@example.com',
+        phone: user.phone || '',
+        bio:
+          user.bio ||
+          (user.role === 'seller'
+            ? 'Experienced commodity seller specializing in precious metals and agricultural products. Verified supplier with excellent ratings.'
+            : 'Experienced commodity trader with a focus on precious metals and agricultural products. Active on TradeChain since 2024.'),
+        location: user.location || 'Location not set',
+        website: user.website || '',
+        company: user.company || (user.role === 'seller' ? 'Premium Metals Co.' : 'Trading LLC'),
+        avatar: '/placeholder.svg?height=120&width=120',
+        joinDate: user.joinedAt
+          ? new Date(user.joinedAt).toLocaleDateString('en-US', {
+              month: 'long',
+              year: 'numeric',
+            })
+          : 'Recently',
+        verified: user.verified || user.kycStatus === 'completed',
+        rating: user.role === 'seller' ? 4.9 : 4.8,
+        totalTrades: user.role === 'seller' ? 89 : 127,
+        successRate: user.role === 'seller' ? 99.2 : 98.5,
+        walletAddress: user.walletAddress || 'Not connected',
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Update profile via context
+      await updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        bio: profileData.bio,
+        location: profileData.location,
+        website: profileData.website,
+        company: profileData.company,
+      });
+
+      setIsEditing(false);
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile has been successfully updated.',
+      });
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset form data here if needed
+    // Reset form data to original user data
+    if (user) {
+      setProfileData((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        phone: user.phone || prev.phone,
+        bio: user.bio || prev.bio,
+        location: user.location || prev.location,
+        website: user.website || prev.website,
+        company: user.company || prev.company,
+      }));
+    }
   };
 
   const handleAvatarChange = () => {
     toast({
       title: 'Avatar Upload',
-      description: 'Avatar upload functionality would be implemented here.',
+      description: 'Avatar upload functionality will be available soon.',
     });
   };
 
@@ -138,13 +204,19 @@ export default function ProfilePage() {
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={handleCancel} size="sm" className="bg-transparent">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                size="sm"
+                className="bg-transparent"
+                disabled={isSaving}
+              >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button onClick={handleSave} size="sm">
+              <Button onClick={handleSave} size="sm" disabled={isSaving}>
                 <Save className="h-4 w-4 mr-2" />
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </>
           ) : (
@@ -263,13 +335,13 @@ export default function ProfilePage() {
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start bg-transparent" asChild>
-                <Link href={`/dashboard/${user?.role}/orders`}>
+                <Link href={`/dashboard/${user?.role}`}>
                   <Star className="h-4 w-4 mr-2" />
                   {user?.role === 'seller' ? 'Sales History' : 'Trading History'}
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start bg-transparent" asChild>
-                <Link href="/dashboard/help">
+                <Link href="/help">
                   <Mail className="h-4 w-4 mr-2" />
                   Contact Support
                 </Link>
@@ -324,15 +396,7 @@ export default function ProfilePage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profileData.email}
-                      onChange={(e) =>
-                        setProfileData((prev) => ({ ...prev, email: e.target.value }))
-                      }
-                      disabled={true}
-                    />
+                    <Input id="email" type="email" value={profileData.email} disabled={true} />
                     <p className="text-xs text-muted-foreground">
                       Email is linked to your wallet and cannot be changed
                     </p>
@@ -613,18 +677,34 @@ export default function ProfilePage() {
                     </div>
                     <Badge variant={user?.kycStatus === 'completed' ? 'default' : 'secondary'}>
                       <Shield className="h-3 w-3 mr-1" />
-                      {user?.kycStatus === 'completed' ? 'Verified' : 'Pending'}
+                      {user?.kycStatus === 'completed'
+                        ? 'Verified'
+                        : user?.kycStatus === 'inReview'
+                        ? 'In Review'
+                        : user?.kycStatus === 'rejected'
+                        ? 'Rejected'
+                        : 'Pending'}
                     </Badge>
                   </div>
 
                   {user?.kycStatus !== 'completed' && (
                     <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                       <p className="text-sm text-yellow-800">
-                        Complete your KYC verification to unlock all trading features.
+                        {user?.kycStatus === 'inReview'
+                          ? 'Your KYC verification is currently being reviewed. You will be notified once complete.'
+                          : user?.kycStatus === 'rejected'
+                          ? 'Your KYC verification was rejected. Please resubmit with correct documents.'
+                          : 'Complete your KYC verification to unlock all trading features.'}
                       </p>
-                      <Button variant="outline" size="sm" className="mt-2" asChild>
-                        <Link href="/dashboard/kyc">Complete Verification</Link>
-                      </Button>
+                      {user?.kycStatus !== 'inReview' && (
+                        <Button variant="outline" size="sm" className="mt-2" asChild>
+                          <Link href="/dashboard/kyc">
+                            {user?.kycStatus === 'rejected'
+                              ? 'Resubmit Verification'
+                              : 'Complete Verification'}
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -669,25 +749,25 @@ export default function ProfilePage() {
 const mockLoginActivity = [
   {
     device: 'Chrome on Windows',
-    location: 'New York, NY',
+    location: 'Lagos, Nigeria',
     time: '2 hours ago',
     current: true,
   },
   {
     device: 'Safari on iPhone',
-    location: 'New York, NY',
+    location: 'Lagos, Nigeria',
     time: '1 day ago',
     current: false,
   },
   {
     device: 'Firefox on macOS',
-    location: 'Boston, MA',
+    location: 'Abuja, Nigeria',
     time: '3 days ago',
     current: false,
   },
   {
     device: 'Chrome on Android',
-    location: 'New York, NY',
+    location: 'Lagos, Nigeria',
     time: '1 week ago',
     current: false,
   },

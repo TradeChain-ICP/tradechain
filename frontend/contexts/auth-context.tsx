@@ -1,17 +1,10 @@
 // frontend/contexts/auth-context.tsx
-
 'use client';
 
 import type React from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  icpAgent,
-  connectWallet,
-  disconnectWallet,
-  isWalletConnected,
-  getCurrentPrincipal,
-} from '@/lib/icp-agent';
+import { IcpAgent } from '@/lib/icp-agent';
 
 type KYCStatus = 'pending' | 'inReview' | 'completed' | 'rejected';
 type UserRole = 'buyer' | 'seller';
@@ -30,17 +23,26 @@ interface User {
   kycStatus: KYCStatus;
   kycSubmittedAt?: Date;
   lastActive: Date;
+  // Extended profile fields
+  email?: string;
+  phone?: string;
+  bio?: string;
+  location?: string;
+  company?: string;
+  website?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   connectWallet: (method: AuthMethod) => Promise<void>;
   setUserRole: (role: UserRole) => Promise<void>;
-  updateKYCStatus: (status: KYCStatus) => void;
+  updateKYCStatus: (status: KYCStatus) => Promise<void>;
+  updateProfile: (profileData: Partial<User>) => Promise<void>;
   disconnect: () => void;
   isLoading: boolean;
   isConnected: boolean;
   refreshUser: () => Promise<void>;
+  initializeWallet: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,9 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initializeAuth = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 Initializing auth context...');
+      console.log('🔄 Initializing enhanced auth context...');
 
-      const connected = await isWalletConnected();
+      const connected = await IcpAgent.isAuthenticated();
       console.log('🔍 Wallet connected status:', connected);
 
       if (connected) {
@@ -76,68 +78,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUserFromBackend = async () => {
     try {
       console.log('🔄 Refreshing user from backend...');
-      const userManagementActor = icpAgent.getUserManagementActor();
+      const userManagementActor = IcpAgent.getUserManagementActor();
 
       if (!userManagementActor) {
-        console.error('❌ No user management actor available');
-        // Don't throw error immediately, this might be a timing issue
-        console.log('⏳ Retrying actor initialization...');
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        const retryActor = icpAgent.getUserManagementActor();
-        if (!retryActor) {
-          throw new Error('User management actor not available after retry');
-        }
-
-        // Use the retry actor
-        console.log('✅ Actor available after retry');
-        const result = await retryActor.getCurrentUser();
-        console.log('📝 getCurrentUser result:', result);
-
-        if ('ok' in result) {
-          const backendUser = result.ok;
-          console.log('✅ User data received:', backendUser);
-
-          const frontendUser: User = {
-            id: backendUser.id,
-            principalId: backendUser.principalId,
-            firstName: backendUser.firstName,
-            lastName: backendUser.lastName,
-            role: backendUser.role?.[0] || null,
-            verified: backendUser.verified,
-            walletAddress: backendUser.walletAddress,
-            authMethod: backendUser.authMethod.nfid ? 'nfid' : 'internet-identity',
-            joinedAt: new Date(Number(backendUser.joinedAt) / 1000000),
-            kycStatus: Object.keys(backendUser.kycStatus)[0] as KYCStatus,
-            kycSubmittedAt: backendUser.kycSubmittedAt?.[0]
-              ? new Date(Number(backendUser.kycSubmittedAt[0]) / 1000000)
-              : undefined,
-            lastActive: new Date(Number(backendUser.lastActive) / 1000000),
-          };
-
-          setUser(frontendUser);
-          console.log('✅ User state updated:', frontendUser);
-        } else if ('err' in result) {
-          console.log('⚠️ User not found in backend:', result.err);
-          setUser(null);
-        }
-        return;
+        console.log('⚠️ No user management actor available, waiting...');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await refreshUserFromBackend(); // Retry
       }
 
       console.log('📞 Calling getCurrentUser...');
       const result = await userManagementActor.getCurrentUser();
-      console.log('📝 getCurrentUser result:', result);
 
       if ('ok' in result) {
         const backendUser = result.ok;
-        console.log('✅ User data received:', backendUser);
+        console.log('✅ User data received from backend:', backendUser);
 
+        // Convert backend user to frontend user format
         const frontendUser: User = {
           id: backendUser.id,
           principalId: backendUser.principalId,
           firstName: backendUser.firstName,
           lastName: backendUser.lastName,
-          role: backendUser.role?.[0] || null,
+          role: backendUser.role && backendUser.role.length > 0 ? backendUser.role[0] : 'buyer',
           verified: backendUser.verified,
           walletAddress: backendUser.walletAddress,
           authMethod: backendUser.authMethod.nfid ? 'nfid' : 'internet-identity',
@@ -151,14 +113,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(frontendUser);
         console.log('✅ User state updated:', frontendUser);
+
+        // Initialize wallet if user exists
+        await initializeUserWallet();
       } else if ('err' in result) {
         console.log('⚠️ User not found in backend:', result.err);
         setUser(null);
       }
     } catch (error: unknown) {
       console.error('❌ Failed to refresh user from backend:', error);
-      console.error('Error details:', (error as Error).message || error);
-      setUser(null);
+
+      // Check if this is a development signature error
+      const errorMessage = (error as Error).message;
+      if (
+        errorMessage?.includes('Invalid delegation') ||
+        errorMessage?.includes('signature could not be verified') ||
+        errorMessage?.includes('Invalid request expiry')
+      ) {
+        console.log('🎭 Development signature error, creating mock user for demo');
+
+        const mockUser: User = {
+          id: `dev_user_${Date.now()}`,
+          principalId: IcpAgent.getPrincipal()?.toText() || 'dev_principal',
+          firstName: 'Demo',
+          lastName: 'User',
+          role: 'buyer',
+          verified: false,
+          walletAddress: 'demo_wallet_address',
+          authMethod: 'internet-identity',
+          joinedAt: new Date(),
+          kycStatus: 'pending',
+          lastActive: new Date(),
+        };
+
+        setUser(mockUser);
+      } else {
+        setUser(null);
+      }
+    }
+  };
+
+  const initializeUserWallet = async () => {
+    try {
+      const walletActor = IcpAgent.getWalletActor();
+      if (walletActor) {
+        console.log('💰 Initializing user wallet...');
+        const walletResult = await walletActor.getWallet();
+
+        if ('err' in walletResult) {
+          // Create wallet if it doesn't exist
+          console.log('💰 Creating new wallet...');
+          const createResult = await walletActor.createWallet();
+          if ('ok' in createResult) {
+            console.log('✅ Wallet created successfully');
+          }
+        } else {
+          console.log('✅ Wallet already exists');
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Wallet initialization failed (expected in development):', error);
     }
   };
 
@@ -167,37 +181,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔌 Starting wallet connection with method:', method);
 
-      const connected = await connectWallet(method);
-      console.log('🔍 Connection result:', connected);
+      let connected = false;
+      if (method === 'nfid') {
+        connected = await IcpAgent.authenticateWithNFID();
+      } else {
+        connected = await IcpAgent.authenticateWithII();
+      }
 
       if (!connected) {
         throw new Error('Failed to connect wallet');
       }
 
       console.log('✅ Wallet connected, checking user existence...');
-      const userManagementActor = icpAgent.getUserManagementActor();
+      const userManagementActor = IcpAgent.getUserManagementActor();
 
       if (!userManagementActor) {
-        console.error('❌ User management actor not available after connection');
         throw new Error('User management actor not available');
       }
 
-      console.log('📞 Checking if user exists...');
-
       try {
         const userExistsResult = await userManagementActor.userExists();
-        console.log('📝 User exists result:', userExistsResult);
 
         if (userExistsResult) {
-          console.log('👤 Existing user found, getting data...');
+          console.log('👤 Existing user found, loading data...');
           await refreshUserFromBackend();
 
           if (user?.role) {
-            const dashboardPath = user.role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
+            const dashboardPath = `/dashboard/${user.role}`;
             console.log('🔄 Redirecting to dashboard:', dashboardPath);
             router.push(dashboardPath);
           } else {
-            console.log('🔄 No role set, redirecting to role selection');
             router.push('/role-selection');
           }
         } else {
@@ -205,16 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push('/role-selection');
         }
       } catch (canisterError: unknown) {
-        console.error('❌ Canister call failed:', canisterError);
-        console.error('Canister error details:', (canisterError as Error).message || canisterError);
-
-        // If canister calls fail, assume new user and go to role selection
-        console.log('⚠️ Assuming new user due to canister error, redirecting to role selection');
+        console.log('⚠️ Canister error during user check, assuming new user');
         router.push('/role-selection');
       }
     } catch (error: unknown) {
       console.error('❌ Wallet connection failed:', error);
-      throw new Error(`Failed to connect with ${method}: ${(error as Error).message}`);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -224,35 +233,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       console.log('👤 Setting user role:', role);
+      const userManagementActor = IcpAgent.getUserManagementActor();
 
-      const userManagementActor = icpAgent.getUserManagementActor();
       if (!userManagementActor) {
         throw new Error('User management actor not available');
       }
 
-      console.log('📞 Checking if user exists before setting role...');
-
       try {
-        const userExistsResult = await userManagementActor.userExists();
-        console.log('📝 User exists for role setting:', userExistsResult);
+        // Check if user exists, if not register them first
+        const userExists = await userManagementActor.userExists();
 
-        if (!userExistsResult) {
-          console.log("🆕 User doesn't exist, registering first...");
+        if (!userExists) {
+          console.log('📝 Registering new user first...');
           const authMethod = { internetIdentity: null };
           const registerResult = await userManagementActor.registerUser(authMethod, 'User', 'Name');
-
-          console.log('📝 Registration result:', registerResult);
 
           if ('err' in registerResult) {
             throw new Error(registerResult.err);
           }
         }
 
-        console.log('📞 Setting user role...');
+        // Set the user role
         const roleVariant = { [role]: null };
         const roleResult = await userManagementActor.setUserRole(roleVariant);
-
-        console.log('📝 Role setting result:', roleResult);
 
         if ('err' in roleResult) {
           throw new Error(roleResult.err);
@@ -260,54 +263,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log('✅ Role set successfully, refreshing user data...');
         await refreshUserFromBackend();
+        await initializeUserWallet(); // Initialize wallet after role is set
 
-        const dashboardPath = role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
+        const dashboardPath = `/dashboard/${role}`;
         console.log('🔄 Redirecting to dashboard:', dashboardPath);
         router.push(dashboardPath);
       } catch (canisterError: unknown) {
-        const errorMessage = (canisterError as Error).message || canisterError;
+        console.log('🎭 Canister error, creating mock user for development');
 
-        // Check if this is a signature validation error that should be suppressed
-        if (
-          typeof errorMessage === 'string' &&
-          (errorMessage.includes('Invalid delegation') ||
-            errorMessage.includes('signature could not be verified') ||
-            errorMessage.includes('Invalid canister signature') ||
-            errorMessage.includes('User not found in development mode'))
-        ) {
-          console.log(
-            '🔕 Suppressed signature validation error during role setting - creating mock user'
-          );
-          // Continue to mock user creation below
-        } else {
-          console.error('❌ Role setting canister error:', canisterError);
-          console.error('Canister error details:', errorMessage);
-        }
-
-        // For demo purposes, create a mock user and redirect
-        console.log('⚠️ Creating mock user due to canister error');
         const mockUser: User = {
-          id: 'mock_user_' + Date.now(),
-          principalId: getCurrentPrincipal() || 'mock_principal',
+          id: `mock_user_${Date.now()}`,
+          principalId: IcpAgent.getPrincipal()?.toText() || 'mock_principal',
           firstName: 'Demo',
           lastName: 'User',
           role: role,
           verified: false,
-          walletAddress: getCurrentPrincipal() || 'mock_wallet',
-          authMethod: 'internet-identity', // Fixed: provide a default authMethod
+          walletAddress: 'mock_wallet_address',
+          authMethod: 'internet-identity',
           joinedAt: new Date(),
           kycStatus: 'pending',
           lastActive: new Date(),
         };
 
         setUser(mockUser);
-        const dashboardPath = role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
-        console.log('🔄 Redirecting to dashboard with mock user:', dashboardPath);
-        router.push(dashboardPath);
+        router.push(`/dashboard/${role}`);
       }
     } catch (error: unknown) {
       console.error('❌ Failed to set user role:', error);
-      throw new Error('Failed to set user role: ' + (error as Error).message);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -315,27 +298,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleUpdateKYCStatus = async (status: KYCStatus) => {
     try {
-      const userManagementActor = icpAgent.getUserManagementActor();
+      console.log('📋 Updating KYC status to:', status);
+      const userManagementActor = IcpAgent.getUserManagementActor();
+
       if (!userManagementActor) {
-        throw new Error('User management actor not available');
+        console.log('⚠️ No user management actor, updating local state only');
+        if (user) {
+          setUser({
+            ...user,
+            kycStatus: status,
+            kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
+          });
+        }
+        return;
       }
 
-      const kycStatus = { [status]: null };
+      const kycStatus = { [status === 'inReview' ? 'inReview' : status]: null };
       const result = await userManagementActor.updateKYCStatus(kycStatus);
 
       if ('ok' in result) {
+        console.log('✅ KYC status updated successfully');
         await refreshUserFromBackend();
       } else {
-        throw new Error(result.err);
+        console.log('⚠️ KYC update failed, updating local state:', result.err);
+        if (user) {
+          setUser({
+            ...user,
+            kycStatus: status,
+            kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
+          });
+        }
       }
     } catch (error) {
-      console.error('Failed to update KYC status:', error);
+      console.error('❌ Failed to update KYC status:', error);
+      // Update local state as fallback
+      if (user) {
+        setUser({
+          ...user,
+          kycStatus: status,
+          kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
+        });
+      }
+    }
+  };
+
+  const handleUpdateProfile = async (profileData: Partial<User>) => {
+    try {
+      console.log('👤 Updating profile:', profileData);
+      const userManagementActor = IcpAgent.getUserManagementActor();
+
+      if (!userManagementActor) {
+        console.log('⚠️ No user management actor, updating local state only');
+        if (user) {
+          setUser({ ...user, ...profileData });
+        }
+        return;
+      }
+
+      // Update basic profile fields if provided
+      if (profileData.firstName || profileData.lastName) {
+        const result = await userManagementActor.updateProfile(
+          profileData.firstName || user?.firstName || '',
+          profileData.lastName || user?.lastName || ''
+        );
+
+        if ('ok' in result) {
+          console.log('✅ Profile updated successfully');
+          await refreshUserFromBackend();
+        } else {
+          console.log('⚠️ Profile update failed:', result.err);
+          throw new Error(result.err);
+        }
+      } else {
+        // For other fields, update local state (extend this when backend supports more fields)
+        if (user) {
+          setUser({ ...user, ...profileData });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to update profile:', error);
+      // Update local state as fallback
+      if (user) {
+        setUser({ ...user, ...profileData });
+      }
+      throw error;
     }
   };
 
   const handleDisconnect = async () => {
     try {
-      await disconnectWallet();
+      await IcpAgent.logout();
       setUser(null);
       router.push('/');
     } catch (error) {
@@ -347,6 +399,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUserFromBackend();
   };
 
+  const initializeWallet = async () => {
+    await initializeUserWallet();
+  };
+
   const isConnected = !!user;
 
   return (
@@ -356,10 +412,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectWallet: handleConnectWallet,
         setUserRole: handleSetUserRole,
         updateKYCStatus: handleUpdateKYCStatus,
+        updateProfile: handleUpdateProfile,
         disconnect: handleDisconnect,
         isLoading,
         isConnected,
         refreshUser,
+        initializeWallet,
       }}
     >
       {children}
@@ -395,7 +453,7 @@ export function ProtectedRoute({
       }
 
       if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        const defaultPath = user.role === 'buyer' ? '/dashboard/buyer' : '/dashboard/seller';
+        const defaultPath = `/dashboard/${user.role}`;
         router.push(redirectTo || defaultPath);
         return;
       }

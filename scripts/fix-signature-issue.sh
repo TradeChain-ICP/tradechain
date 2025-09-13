@@ -69,6 +69,9 @@ NEXT_PUBLIC_NFID_URL=https://nfid.one/authenticate
 # Development Configuration
 NODE_ENV=development
 
+# CRITICAL: Disable signature validation in development
+NEXT_PUBLIC_DISABLE_SIGNATURE_VALIDATION=true
+
 # Disable mock mode
 NEXT_PUBLIC_ENABLE_MOCK_AUTH=false
 EOF

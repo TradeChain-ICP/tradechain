@@ -33,10 +33,15 @@ export default function RoleSelectionPage() {
         title: 'Welcome to TradeChain',
         description: `Your ${selectedRole} account is ready.`,
       });
+      // Navigation is handled by the auth context after successful role setting
     } catch (error) {
+      console.error('Role selection error:', error);
       toast({
         title: 'Setup Failed',
-        description: 'There was an error setting up your account. Please try again.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'There was an error setting up your account. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -64,7 +69,7 @@ export default function RoleSelectionPage() {
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-4xl font-bold">Choose Your Role</h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Select how you want to participate in TradeChain’s marketplace.
+              Select how you want to participate in TradeChain's marketplace.
             </p>
           </div>
 

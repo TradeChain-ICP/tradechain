@@ -60,7 +60,7 @@ export default function ConnectPage() {
             src="/images/auth-background.jpeg"
             fill
             alt="Authentication background"
-            className="object-cover opacity-30"
+            className="object-cover opacity-50"
           />
         </div>
         <div className="relative z-20 flex items-center text-lg font-medium">
