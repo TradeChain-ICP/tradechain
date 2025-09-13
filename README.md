@@ -2,9 +2,7 @@
 
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
-**🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)  
-**🔗 Dev Canister ID:** [uxrrr-q7777-77774-qaaaq-cai]  
-**🔗 Canister Interface:** [Development Canister Interface]( http://127.0.0.1:8000/?canisterId=u6s2n-gx777-77774-qaaba-cai&id=uxrrr-q7777-77774-qaaaq-cai)   
+**🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)
 **🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)   
 **🔗 Demo Video:** [10-minute walkthrough URL]
 
@@ -204,9 +202,10 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 - 🔄 AI model training with commodity market data
 - 🔄 KYC/AML provider integration
 - 🔄 Real-time market data integration
+- 🔄 ICP Mainnet deployment with live canisters
 
 ### Next Steps
-- 🎯 ICP Mainnet deployment with live canisters
+- 🎯 Full mainnet launch with initial commodity categories
 - 🎯 Partnership establishment with commodity suppliers
 - 🎯 Beta user testing and feedback integration
 - 🎯 Regulatory compliance and legal framework implementation
@@ -233,7 +232,7 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ```
 📁 tradechain/
-├── 📁 backend/                          # ICP Backend (Motoko/Rust Canisters)
+├── 📁 backend/                          # ICP Backend (Motoko Canisters)
 │   ├── 📁 src/
 │   │   ├── 📁 user_management/          # User auth, KYC, profiles
 │   │   ├── 📁 marketplace/              # Product listings, search
