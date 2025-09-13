@@ -49,7 +49,7 @@ export const createMockSuccessResponse = (context: string) => {
       principalId: 'development_principal',
       firstName: 'Dev',
       lastName: 'User',
-      role: ['buyer'], // Default role for testing
+      role: ['seller'], // Default role for testing
       authMethod: { internetIdentity: null },
       kycStatus: { pending: null },
       verified: false,
