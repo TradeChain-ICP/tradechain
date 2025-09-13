@@ -10,12 +10,6 @@
 			}
 		}
 	],
-	"routes": [
-		{
-			"src": "/(.*)",
-			"dest": "/frontend/$1"
-		}
-	],
 	"env": {
 		"NEXT_PUBLIC_DFX_NETWORK": "ic",
 		"NEXT_PUBLIC_IC_HOST": "https://icp-api.io",
