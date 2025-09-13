@@ -1,0 +1,69 @@
+type UserRole = 
+ variant {
+   buyer;
+   seller;
+ };
+type User = 
+ record {
+   authMethod: AuthMethod;
+   firstName: text;
+   id: text;
+   joinedAt: int;
+   kycStatus: KYCStatus;
+   kycSubmittedAt: opt int;
+   lastActive: int;
+   lastName: text;
+   principalId: text;
+   role: opt UserRole;
+   verified: bool;
+   walletAddress: text;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: User;
+ };
+type KYCStatus = 
+ variant {
+   completed;
+   inReview;
+   pending;
+   rejected;
+ };
+type AuthMethod = 
+ variant {
+   internetIdentity;
+   nfid;
+ };
+service : {
+  getCurrentUser: () -> (Result);
+  getTotalUsers: () -> (nat) query;
+  getUserByPrincipal: ("principal": principal) -> (opt User) query;
+  getUserCountByRole: () -> (vec record {
+                                   UserRole;
+                                   nat;
+                                 }) query;
+  getUserStats: () ->
+   (record {
+      kycCompleted: nat;
+      kycInReview: nat;
+      kycPending: nat;
+      kycRejected: nat;
+      totalUsers: nat;
+      verifiedUsers: nat;
+    }) query;
+  getUsersByRole: (role: UserRole) -> (vec User) query;
+  healthCheck: () ->
+   (record {
+      status: text;
+      timestamp: int;
+      userCount: nat;
+    }) query;
+  registerUser: (authMethod: AuthMethod, firstName: text, lastName: text) ->
+   (Result);
+  setUserRole: (role: UserRole) -> (Result);
+  updateKYCStatus: (status: KYCStatus) -> (Result);
+  updateProfile: (firstName: text, lastName: text) -> (Result);
+  userExists: () -> (bool);
+  validateSession: () -> (Result);
+}

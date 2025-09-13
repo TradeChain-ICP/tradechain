@@ -32,6 +32,9 @@ next-env.d.ts
 .dfx/
 **/.dfx/
 
+.vessel/
+**/.vessel/
+
 # Node modules
 node_modules/
 **/node_modules/

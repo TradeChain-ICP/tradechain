@@ -1,0 +1,79 @@
+// backend/src/user_management/user_management.did
+
+type UserRole = variant {
+  buyer;
+  seller;
+};
+
+type KYCStatus = variant {
+  pending;
+  inReview;
+  completed;
+  rejected;
+};
+
+type AuthMethod = variant {
+  nfid;
+  internetIdentity;
+};
+
+type User = record {
+  id: text;
+  principalId: text;
+  firstName: text;
+  lastName: text;
+  role: opt UserRole;
+  authMethod: AuthMethod;
+  kycStatus: KYCStatus;
+  kycSubmittedAt: opt int;
+  verified: bool;
+  walletAddress: text;
+  joinedAt: int;
+  lastActive: int;
+};
+
+type UserStats = record {
+  totalUsers: nat;
+  verifiedUsers: nat;
+  kycPending: nat;
+  kycInReview: nat;
+  kycCompleted: nat;
+  kycRejected: nat;
+};
+
+type HealthCheck = record {
+  status: text;
+  timestamp: int;
+  userCount: nat;
+};
+
+type Result_User = variant {
+  ok: User;
+  err: text;
+};
+
+type Result_Bool = variant {
+  ok: bool;
+  err: text;
+};
+
+service : {
+  // Authentication and user management
+  registerUser: (AuthMethod, text, text) -> (Result_User);
+  setUserRole: (UserRole) -> (Result_User);
+  getCurrentUser: () -> (Result_User);
+  updateKYCStatus: (KYCStatus) -> (Result_User);
+  updateProfile: (text, text) -> (Result_User);
+  
+  // Session management
+  validateSession: () -> (Result_User);
+  userExists: () -> (bool);
+  
+  // Query functions
+  getUsersByRole: (UserRole) -> (vec User) query;
+  getUserByPrincipal: (principal) -> (opt User) query;
+  getTotalUsers: () -> (nat) query;
+  getUserCountByRole: () -> (vec record { UserRole; nat }) query;
+  getUserStats: () -> (UserStats) query;
+  healthCheck: () -> (HealthCheck) query;
+}

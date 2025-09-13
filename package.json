@@ -1,0 +1,46 @@
+{
+	"name": "tradechain-icp",
+	"version": "0.1.0",
+	"private": true,
+	"description": "TradeChain - Decentralized Commodity Trading Platform on ICP",
+	"scripts": {
+		"setup:dev": "chmod +x scripts/*.sh && scripts/setup-local-dev.sh",
+		"deploy:local": "scripts/deploy-local.sh",
+		"deploy:mainnet": "scripts/deploy-mainnet.sh",
+		"test:integration": "scripts/test-integration.sh",
+		"replica:start": "dfx start --background",
+		"replica:stop": "dfx stop",
+		"replica:clean": "dfx start --background --clean",
+		"canister:status": "dfx canister status --all",
+		"canister:logs": "dfx logs",
+		"canister:call:health": "dfx canister call user_management healthCheck",
+		"generate": "dfx generate",
+		"vessel:install": "vessel install",
+		"frontend:dev": "cd frontend && npm run dev",
+		"frontend:build": "cd frontend && npm run build",
+		"frontend:install": "cd frontend && npm install",
+		"frontend:lint": "cd frontend && npm run lint",
+		"dev": "concurrently \"npm run replica:start\" \"npm run frontend:dev\"",
+		"build": "npm run deploy:local && npm run frontend:build"
+	},
+	"keywords": [
+		"icp",
+		"blockchain",
+		"commodity-trading",
+		"defi",
+		"motoko",
+		"internet-computer"
+	],
+	"author": "TradeChain Team",
+	"license": "MIT",
+	"devDependencies": {
+		"concurrently": "^8.2.2"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/TradeChain-ICP/tradechain"
+	}
+}

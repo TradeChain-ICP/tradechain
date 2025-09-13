@@ -1,0 +1,6 @@
+service : {
+  healthCheck: () -> (record {
+                        status: text;
+                        timestamp: int;
+                      }) query;
+}
