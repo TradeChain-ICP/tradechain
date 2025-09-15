@@ -1,0 +1,135 @@
+type TokenType = variant {
+  ICP;
+  USD;
+  Naira;
+  Euro;
+};
+
+type ProductStatus = variant {
+  pending;
+  approved;
+  rejected;
+  soldOut;
+};
+
+type Category = record {
+  id: text;
+  name: text;
+  description: opt text;
+};
+
+type Product = record {
+  id: text;
+  title: text;
+  description: text;
+  price: nat;
+  tokenType: TokenType;
+  categoryId: text;
+  seller: principal;
+  status: ProductStatus;
+  quantity: nat;
+  images: vec text;
+  createdAt: int;
+  updatedAt: int;
+};
+
+type CreateProductRequest = record {
+  title: text;
+  description: text;
+  price: nat;
+  tokenType: TokenType;
+  categoryId: text;
+  quantity: nat;
+  images: vec text;
+};
+
+type UpdateProductRequest = record {
+  title: opt text;
+  description: opt text;
+  price: opt nat;
+  tokenType: opt TokenType;
+  quantity: opt nat;
+  images: opt vec text;
+};
+
+type SearchFilter = record {
+  keyword: opt text;
+  categoryId: opt text;
+  minPrice: opt nat;
+  maxPrice: opt nat;
+  status: opt ProductStatus;
+  tokenType: opt TokenType;
+};
+
+type Pagination = record {
+  offset: nat;
+  limit: nat;
+};
+
+type ProductPage = record {
+  products: vec Product;
+  total: nat;
+  hasMore: bool;
+};
+
+type SellerProductsSummary = record {
+  products: vec Product;
+  totalListings: nat;
+  approvedCount: nat;
+  pendingCount: nat;
+  totalValue: nat;
+};
+
+type MarketplaceStats = record {
+  totalProducts: nat;
+  approvedProducts: nat;
+  totalListings: nat;
+  activeSellers: nat;
+  totalCategories: nat;
+  avgPrice: nat;
+};
+
+type HealthCheck = record {
+  status: text;
+  timestamp: int;
+  productCount: nat;
+};
+
+type Result_Product = variant {
+  ok: Product;
+  err: text;
+};
+
+type Result_ProductPage = variant {
+  ok: ProductPage;
+  err: text;
+};
+
+type Result_SellerProductsSummary = variant {
+  ok: SellerProductsSummary;
+  err: text;
+};
+
+service : {
+  // Product management (seller)
+  createProduct: (CreateProductRequest) -> (Result_Product);
+  updateProduct: (text, UpdateProductRequest) -> (Result_Product);
+  
+  // Product queries
+  getProduct: (text) -> (opt Product) query;
+  searchProducts: (SearchFilter, Pagination) -> (ProductPage) query;
+  
+  // Seller dashboard
+  getMyProducts: (Pagination) -> (SellerProductsSummary);
+  
+  // Admin moderation
+  approveProduct: (text) -> (Result_Product);
+  rejectProduct: (text, text) -> (Result_Product);
+  
+  // Categories and stats
+  getCategories: () -> (vec Category) query;
+  getMarketplaceStats: () -> (MarketplaceStats) query;
+  
+  // Health
+  healthCheck: () -> (HealthCheck) query;
+}
