@@ -28,9 +28,9 @@ persistent actor Marketplace {
     type Result<T, E> = Result.Result<T, E>;
 
     // Stable storage for upgrades (using arrays instead of HashMap)
-    private stable var products : [(Text, Product)] = [];
-    private stable var categories : [(Text, Category)] = [];
-    private stable var productIdCounter : Nat = 0;
+    private var products : [(Text, Product)] = [];
+    private var categories : [(Text, Category)] = [];
+    private var productIdCounter : Nat = 0;
 
     // Helper functions for array-based storage
     private func findProduct(id: Text) : ?Product {
@@ -120,7 +120,7 @@ persistent actor Marketplace {
             tokenType = req.tokenType;
             categoryId = req.categoryId;
             seller = caller;
-            status = #pending;  // Requires admin approval
+            status = #active;  // Products are active by default
             quantity = req.quantity;
             images = req.images;
             createdAt = now;
@@ -146,7 +146,7 @@ persistent actor Marketplace {
 
                 let now = Time.now();
                 let newQuantity = switch(req.quantity) { case (?q) q; case null product.quantity };
-                let newStatus = if (newQuantity == 0) #soldOut else product.status;
+                let newStatus = if (newQuantity == 0) #soldOut else #active;
 
                 let updatedProduct : Product = {
                     id = product.id;
@@ -178,8 +178,8 @@ persistent actor Marketplace {
 
     // Search products with filters and pagination
     public query func searchProducts(filter: SearchFilter, pagination: Pagination) : async ProductPage {
-        // Start with all approved products
-        var filteredProducts = getProductsByStatus(#approved);
+        // Start with all products
+        var filteredProducts = Array.map<(Text, Product), Product>(products, func((_, product)) = product);
 
         // Apply filters
         if (Option.isSome(filter.keyword)) {
@@ -202,11 +202,6 @@ persistent actor Marketplace {
             filteredProducts := Array.filter<Product>(filteredProducts, func(prod: Product): Bool {
                 prod.price >= minP and prod.price <= maxP
             });
-        };
-
-        if (Option.isSome(filter.status)) {
-            let status = switch (filter.status) { case (?s) s; case null #approved };
-            filteredProducts := getProductsByStatus(status);
         };
 
         if (Option.isSome(filter.tokenType)) {
@@ -258,19 +253,15 @@ persistent actor Marketplace {
 
         // Calculate summary
         var totalListings = 0;
-        var approvedCount = 0;
+        var activeCount = 0;
         var totalValue = 0;
-        var pendingCount = 0;
 
         for (prod in sellerProducts.vals()) {
             totalListings += 1;
             switch(prod.status) {
-                case (#approved) {
-                    approvedCount += 1;
+                case (#active) {
+                    activeCount += 1;
                     totalValue += prod.price;
-                };
-                case (#pending) {
-                    pendingCount += 1;
                 };
                 case _ {};
             };
@@ -279,76 +270,9 @@ persistent actor Marketplace {
         {
             products = pageProducts;
             totalListings = totalListings;
-            approvedCount = approvedCount;
-            pendingCount = pendingCount;
+            activeCount = activeCount;
             totalValue = totalValue;
         }
-    };
-
-    // Admin: Approve product
-    public shared(msg) func approveProduct(productId: Text) : async Result<Product, Text> {
-        // TODO: Add admin check (e.g., via user canister)
-        switch(findProduct(productId)) {
-            case null #err("Product not found");
-            case (?product) {
-                if (product.status != #pending) {
-                    return #err("Product not in pending status");
-                };
-
-                let updatedProduct : Product = {
-                    id = product.id;
-                    title = product.title;
-                    description = product.description;
-                    price = product.price;
-                    tokenType = product.tokenType;
-                    categoryId = product.categoryId;
-                    seller = product.seller;
-                    status = #approved;
-                    quantity = product.quantity;
-                    images = product.images;
-                    createdAt = product.createdAt;
-                    updatedAt = Time.now();
-                };
-
-                updateProductInStorage(productId, updatedProduct);
-
-                Debug.print("Product approved: " # productId);
-                #ok(updatedProduct)
-            };
-        };
-    };
-
-    // Admin: Reject product
-    public shared(msg) func rejectProduct(productId: Text, reason: Text) : async Result<Product, Text> {
-        // TODO: Add admin check
-        switch(findProduct(productId)) {
-            case null #err("Product not found");
-            case (?product) {
-                if (product.status != #pending) {
-                    return #err("Product not in pending status");
-                };
-
-                let updatedProduct : Product = {
-                    id = product.id;
-                    title = product.title;
-                    description = product.description # "\nRejected: " # reason;
-                    price = product.price;
-                    tokenType = product.tokenType;
-                    categoryId = product.categoryId;
-                    seller = product.seller;
-                    status = #rejected;
-                    quantity = product.quantity;
-                    images = product.images;
-                    createdAt = product.createdAt;
-                    updatedAt = Time.now();
-                };
-
-                updateProductInStorage(productId, updatedProduct);
-
-                Debug.print("Product rejected: " # productId);
-                #ok(updatedProduct)
-            };
-        };
     };
 
     // Get all categories
@@ -359,7 +283,7 @@ persistent actor Marketplace {
     // Get marketplace statistics
     public query func getMarketplaceStats() : async MarketplaceStats {
         let allProducts = Array.map<(Text, Product), Product>(products, func((_, product)) = product);
-        let approvedProducts = Array.filter<Product>(allProducts, func(prod) = prod.status == #approved);
+        let activeProducts = Array.filter<Product>(allProducts, func(prod) = prod.status == #active);
 
         var totalPriceSum : Nat = 0;
         var countForAvg : Nat = 0;
@@ -383,7 +307,7 @@ persistent actor Marketplace {
 
         {
             totalProducts = allProducts.size();
-            approvedProducts = approvedProducts.size();
+            activeProducts = activeProducts.size();
             totalListings = allProducts.size();
             activeSellers = uniqueSellers.size();
             totalCategories = categories.size();

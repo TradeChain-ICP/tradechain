@@ -3,7 +3,6 @@ import Time "mo:base/Time";
 
 module {
     
-    // Token types (duplicated from wallet for independence)
     public type TokenType = {
         #ICP;
         #USD;
@@ -11,11 +10,9 @@ module {
         #Euro;
     };
 
-    // Product status enumeration
+    // Product status enumeration (simplified for buyers/sellers only)
     public type ProductStatus = {
-        #pending;      // Awaiting admin approval
-        #approved;     // Live on marketplace
-        #rejected;     // Rejected by admin
+        #active;       // Live on marketplace
         #soldOut;      // Out of stock
     };
 
@@ -69,7 +66,6 @@ module {
         categoryId: ?Text;
         minPrice: ?Nat;
         maxPrice: ?Nat;
-        status: ?ProductStatus;
         tokenType: ?TokenType;
     };
 
@@ -90,15 +86,14 @@ module {
     public type SellerProductsSummary = {
         products: [Product];
         totalListings: Nat;
-        approvedCount: Nat;
-        pendingCount: Nat;
+        activeCount: Nat;
         totalValue: Nat;  // Sum of prices
     };
 
     // Marketplace statistics
     public type MarketplaceStats = {
         totalProducts: Nat;
-        approvedProducts: Nat;
+        activeProducts: Nat;
         totalListings: Nat;
         activeSellers: Nat;
         totalCategories: Nat;
@@ -108,7 +103,6 @@ module {
     // Error types
     public type MarketplaceError = {
         #ProductNotFound;
-        #InvalidProductStatus;
         #InsufficientQuantity;
         #UnauthorizedSeller;
         #CategoryNotFound;

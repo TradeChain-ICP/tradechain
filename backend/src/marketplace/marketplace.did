@@ -1,3 +1,4 @@
+
 type TokenType = variant {
   ICP;
   USD;
@@ -6,9 +7,7 @@ type TokenType = variant {
 };
 
 type ProductStatus = variant {
-  pending;
-  approved;
-  rejected;
+  active;
   soldOut;
 };
 
@@ -57,7 +56,6 @@ type SearchFilter = record {
   categoryId: opt text;
   minPrice: opt nat;
   maxPrice: opt nat;
-  status: opt ProductStatus;
   tokenType: opt TokenType;
 };
 
@@ -75,14 +73,13 @@ type ProductPage = record {
 type SellerProductsSummary = record {
   products: vec Product;
   totalListings: nat;
-  approvedCount: nat;
-  pendingCount: nat;
+  activeCount: nat;
   totalValue: nat;
 };
 
 type MarketplaceStats = record {
   totalProducts: nat;
-  approvedProducts: nat;
+  activeProducts: nat;
   totalListings: nat;
   activeSellers: nat;
   totalCategories: nat;
@@ -111,20 +108,16 @@ type Result_SellerProductsSummary = variant {
 };
 
 service : {
-  // Product management (seller)
+  // Product management (sellers)
   createProduct: (CreateProductRequest) -> (Result_Product);
   updateProduct: (text, UpdateProductRequest) -> (Result_Product);
   
-  // Product queries
+  // Product queries (buyers)
   getProduct: (text) -> (opt Product) query;
   searchProducts: (SearchFilter, Pagination) -> (ProductPage) query;
   
   // Seller dashboard
   getMyProducts: (Pagination) -> (SellerProductsSummary);
-  
-  // Admin moderation
-  approveProduct: (text) -> (Result_Product);
-  rejectProduct: (text, text) -> (Result_Product);
   
   // Categories and stats
   getCategories: () -> (vec Category) query;
