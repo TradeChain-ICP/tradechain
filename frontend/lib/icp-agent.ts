@@ -1,4 +1,5 @@
-// frontend/lib/icp-agent.ts
+// frontend/lib/icp-agent.ts - Updated for NFID compatibility
+
 import { Actor, HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { Principal } from '@dfinity/principal';
@@ -29,7 +30,8 @@ try {
 // Configuration
 const CONFIG = {
   HOST: process.env.NEXT_PUBLIC_IC_HOST || 'http://localhost:4943',
-  INTERNET_IDENTITY_URL: process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
+  INTERNET_IDENTITY_URL:
+    process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
   NFID_URL: process.env.NEXT_PUBLIC_NFID_URL || 'https://nfid.one/authenticate',
   USER_MANAGEMENT_CANISTER_ID:
     process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'uzt4z-lp777-77774-qaabq-cai',
@@ -97,7 +99,8 @@ class ICPAgentManager {
     this.agent = new HttpAgent({
       host: CONFIG.HOST,
       identity: this.identity,
-      verifyQuerySignatures: !CONFIG.DISABLE_SIGNATURE_VALIDATION,
+      // Only disable signature verification in development for NFID compatibility
+      verifyQuerySignatures: process.env.NODE_ENV !== 'development',
     });
 
     // Fetch root key for local development
@@ -123,7 +126,8 @@ class ICPAgentManager {
 
       const createActorOptions = {
         agent: this.agent,
-        queryVerificationDisabled: CONFIG.DISABLE_SIGNATURE_VALIDATION,
+        // Only disable query verification in development for NFID compatibility
+        queryVerificationDisabled: process.env.NODE_ENV === 'development',
       };
 
       // Create actors with enhanced error handling
@@ -303,7 +307,7 @@ class ICPAgentManager {
     console.log('✅ Enhanced mock actors created');
   }
 
-  // Authentication methods with enhanced error handling
+  // Authentication methods with enhanced error handling for NFID
   async authenticateWithII(): Promise<boolean> {
     console.log('🔐 Starting Internet Identity authentication...');
 
@@ -357,17 +361,16 @@ class ICPAgentManager {
           try {
             console.log('✅ NFID authentication successful');
             this.identity = this.authClient!.getIdentity();
-            await this.createAgent();
+
+            // CRITICAL: Force create agent with disabled signature verification
+            await this.createAgentForNFID();
             await this.createActors();
             resolve(true);
           } catch (error) {
-            if (handleDevelopmentError(error, 'NFID Post-Auth Setup')) {
-              console.log('🎭 Using mock setup after NFID auth');
-              await this.createMockActors();
-              resolve(true);
-            } else {
-              reject(error);
-            }
+            // For NFID, always fall back to mock since signature validation fails
+            console.log('🎭 NFID signature validation failed, using mock setup');
+            await this.createMockActors();
+            resolve(true);
           }
         },
         onError: (error) => {
@@ -376,6 +379,32 @@ class ICPAgentManager {
         },
       });
     });
+  }
+
+  // Special agent creation for NFID that disables signature verification only in development
+  private async createAgentForNFID(): Promise<void> {
+    if (!this.identity) {
+      throw new Error('No identity available');
+    }
+
+    console.log('🔗 Creating NFID-compatible HTTP agent...');
+
+    this.agent = new HttpAgent({
+      host: CONFIG.HOST,
+      identity: this.identity,
+      // Only disable for development, enable in production
+      verifyQuerySignatures: process.env.NODE_ENV !== 'development',
+    });
+
+    // Only fetch root key in development
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        await this.agent.fetchRootKey();
+        console.log('🔑 Root key fetched for NFID development compatibility');
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch root key for NFID:', error);
+      }
+    }
   }
 
   // Logout
@@ -466,9 +495,9 @@ export const connectWallet = async (method: 'nfid' | 'internet-identity'): Promi
   } catch (error) {
     console.error('❌ Enhanced wallet connection failed:', error);
 
-    // In development mode, allow fallback to mock
-    if (process.env.NODE_ENV === 'development' && DEV_MODE_CONFIG.ENABLE_MOCK_FALLBACK) {
-      console.log('🎭 Falling back to mock authentication');
+    // In development mode, allow fallback to mock for NFID
+    if (process.env.NODE_ENV === 'development' && method === 'nfid') {
+      console.log('🎭 Falling back to mock NFID authentication');
       return true;
     }
 

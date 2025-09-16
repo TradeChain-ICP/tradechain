@@ -1,5 +1,5 @@
 // frontend/lib/dev-mode-handler.ts
-// Enhanced development mode error suppression and mock handling
+// Enhanced development mode error suppression for NFID compatibility
 
 export const DEV_MODE_CONFIG = {
   SUPPRESS_SIGNATURE_ERRORS: process.env.NODE_ENV === 'development',
@@ -9,7 +9,7 @@ export const DEV_MODE_CONFIG = {
 
 export const isSignatureValidationError = (error: any): boolean => {
   const errorMessage = error?.message || error?.toString() || '';
-  
+
   const signatureErrorPatterns = [
     'Invalid delegation',
     'signature could not be verified',
@@ -17,32 +17,36 @@ export const isSignatureValidationError = (error: any): boolean => {
     'Invalid request expiry',
     'Specified ingress_expiry not within expected range',
     'User not found in development mode',
-    'AgentCallError'
+    'AgentCallError',
+    'certificate verification failed',
+    'threshold signature',
+    'ThresBls12_381 signature could not be verified',
+    'IcCanisterSignature signature could not be verified',
+    'failed to verify threshold signature',
+    'Invalid combined threshold signature',
   ];
-  
-  return signatureErrorPatterns.some(pattern => 
-    errorMessage.includes(pattern)
-  );
+
+  return signatureErrorPatterns.some((pattern) => errorMessage.includes(pattern));
 };
 
 export const handleDevelopmentError = (error: any, context: string): boolean => {
   if (!DEV_MODE_CONFIG.SUPPRESS_SIGNATURE_ERRORS) {
     return false; // Don't suppress in production
   }
-  
+
   if (isSignatureValidationError(error)) {
     if (DEV_MODE_CONFIG.LOG_SUPPRESSED_ERRORS) {
       console.log(`🔕 [${context}] Suppressed signature validation error:`, error.message);
     }
     return true; // Error was suppressed
   }
-  
+
   return false; // Error was not suppressed
 };
 
 export const createMockSuccessResponse = (context: string) => {
   console.log(`🎭 [${context}] Creating mock success response for development`);
-  
+
   return {
     ok: {
       id: `dev_user_${Date.now()}`,
@@ -57,6 +61,28 @@ export const createMockSuccessResponse = (context: string) => {
       joinedAt: BigInt(Date.now() * 1000000),
       lastActive: BigInt(Date.now() * 1000000),
       kycSubmittedAt: [],
-    }
+    },
+  };
+};
+
+// NFID-specific mock response for authentication issues
+export const createNFIDMockResponse = (context: string) => {
+  console.log(`🎭🆔 [${context}] Creating NFID mock success response for development`);
+
+  return {
+    ok: {
+      id: `nfid_dev_user_${Date.now()}`,
+      principalId: 'nfid_development_principal',
+      firstName: 'NFID',
+      lastName: 'User',
+      role: ['buyer'], // Default to buyer for NFID testing
+      authMethod: { nfid: null },
+      kycStatus: { pending: null },
+      verified: false,
+      walletAddress: 'nfid_dev_wallet_address',
+      joinedAt: BigInt(Date.now() * 1000000),
+      lastActive: BigInt(Date.now() * 1000000),
+      kycSubmittedAt: [],
+    },
   };
 };
