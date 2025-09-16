@@ -29,7 +29,7 @@ try {
 // Configuration
 const CONFIG = {
   HOST: process.env.NEXT_PUBLIC_IC_HOST || 'http://localhost:4943',
-  INTERNET_IDENTITY_URL: 'https://identity.ic0.app',
+  INTERNET_IDENTITY_URL: process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
   NFID_URL: process.env.NEXT_PUBLIC_NFID_URL || 'https://nfid.one/authenticate',
   USER_MANAGEMENT_CANISTER_ID:
     process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'uzt4z-lp777-77774-qaabq-cai',
