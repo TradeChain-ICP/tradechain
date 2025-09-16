@@ -2,7 +2,7 @@
 'use client';
 
 import type React from 'react';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { IcpAgent } from '@/lib/icp-agent';
 
@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const navigationInProgress = useRef(false);
 
   useEffect(() => {
     initializeAuth();
@@ -75,6 +76,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Helper function to extract role from Motoko variant
+  const extractRoleFromBackend = (backendRole: any): UserRole => {
+    if (!backendRole || backendRole.length === 0) {
+      return 'buyer'; // default
+    }
+
+    const roleVariant = backendRole[0];
+    console.log('🔍 Backend role variant:', roleVariant);
+
+    // Handle different possible formats
+    if (typeof roleVariant === 'string') {
+      return roleVariant as UserRole;
+    }
+
+    if (typeof roleVariant === 'object' && roleVariant !== null) {
+      // Check for variant format like { buyer: null } or { seller: null }
+      if ('buyer' in roleVariant) return 'buyer';
+      if ('seller' in roleVariant) return 'seller';
+
+      // Check for key-based format
+      const keys = Object.keys(roleVariant);
+      if (keys.length > 0) {
+        const key = keys[0];
+        if (key === 'buyer' || key === 'seller') {
+          return key as UserRole;
+        }
+      }
+    }
+
+    return 'buyer'; // fallback
+  };
+
   const refreshUserFromBackend = async () => {
     try {
       console.log('🔄 Refreshing user from backend...');
@@ -93,13 +126,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const backendUser = result.ok;
         console.log('✅ User data received from backend:', backendUser);
 
-        // Convert backend user to frontend user format
+        // Extract role properly
+        const userRole = extractRoleFromBackend(backendUser.role);
+        console.log('✅ Extracted role:', userRole);
+
         const frontendUser: User = {
           id: backendUser.id,
           principalId: backendUser.principalId,
           firstName: backendUser.firstName,
           lastName: backendUser.lastName,
-          role: backendUser.role && backendUser.role.length > 0 ? backendUser.role[0] : 'buyer',
+          role: userRole,
           verified: backendUser.verified,
           walletAddress: backendUser.walletAddress,
           authMethod: backendUser.authMethod.nfid ? 'nfid' : 'internet-identity',
@@ -176,7 +212,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const navigateToUserDashboard = (role: UserRole) => {
+    if (navigationInProgress.current) {
+      console.log('🚫 Navigation already in progress, skipping duplicate navigation');
+      return;
+    }
+
+    // Validate role is a proper string
+    if (typeof role !== 'string' || (role !== 'buyer' && role !== 'seller')) {
+      console.error('❌ Invalid role for navigation:', role);
+      router.push('/role-selection');
+      return;
+    }
+
+    navigationInProgress.current = true;
+    const dashboardPath = `/dashboard/${role}`;
+    console.log('🔄 Navigating to dashboard:', dashboardPath);
+
+    router.push(dashboardPath);
+
+    // Reset navigation flag after a short delay
+    setTimeout(() => {
+      navigationInProgress.current = false;
+    }, 2000);
+  };
+
   const handleConnectWallet = async (method: AuthMethod) => {
+    if (navigationInProgress.current) {
+      console.log('🚫 Navigation in progress, ignoring wallet connection');
+      return;
+    }
+
     setIsLoading(true);
     try {
       console.log('🔌 Starting wallet connection with method:', method);
@@ -206,10 +272,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('👤 Existing user found, loading data...');
           await refreshUserFromBackend();
 
-          if (user?.role) {
-            const dashboardPath = `/dashboard/${user.role}`;
-            console.log('🔄 Redirecting to dashboard:', dashboardPath);
-            router.push(dashboardPath);
+          // Check current user state after refresh
+          const currentUser = await userManagementActor.getCurrentUser();
+          if ('ok' in currentUser && currentUser.ok.role && currentUser.ok.role.length > 0) {
+            const userRole = extractRoleFromBackend(currentUser.ok.role);
+            navigateToUserDashboard(userRole);
           } else {
             router.push('/role-selection');
           }
@@ -230,6 +297,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleSetUserRole = async (role: UserRole) => {
+    if (navigationInProgress.current) {
+      console.log('🚫 Navigation in progress, ignoring role setting');
+      return;
+    }
+
     setIsLoading(true);
     try {
       console.log('👤 Setting user role:', role);
@@ -253,8 +325,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Set the user role
+        // Set the user role - use proper variant format
         const roleVariant = { [role]: null };
+        console.log('🔄 Setting role variant:', roleVariant);
         const roleResult = await userManagementActor.setUserRole(roleVariant);
 
         if ('err' in roleResult) {
@@ -265,9 +338,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await refreshUserFromBackend();
         await initializeUserWallet(); // Initialize wallet after role is set
 
-        const dashboardPath = `/dashboard/${role}`;
-        console.log('🔄 Redirecting to dashboard:', dashboardPath);
-        router.push(dashboardPath);
+        // Navigate to the dashboard
+        navigateToUserDashboard(role);
       } catch (canisterError: unknown) {
         console.log('🎭 Canister error, creating mock user for development');
 
@@ -286,7 +358,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         setUser(mockUser);
-        router.push(`/dashboard/${role}`);
+        navigateToUserDashboard(role);
       }
     } catch (error: unknown) {
       console.error('❌ Failed to set user role:', error);
@@ -387,6 +459,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleDisconnect = async () => {
     try {
+      navigationInProgress.current = false; // Reset navigation flag
       await IcpAgent.logout();
       setUser(null);
       router.push('/');

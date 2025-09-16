@@ -299,13 +299,6 @@ export default function ProfilePage() {
                       <div className="text-xs text-muted-foreground">Rating</div>
                     </div>
                   </div>
-
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-green-600">
-                      {profileData.successRate}%
-                    </div>
-                    <div className="text-xs text-muted-foreground">Success Rate</div>
-                  </div>
                 </div>
               </div>
             </CardContent>
