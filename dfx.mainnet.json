@@ -20,12 +20,6 @@
 		"ai_insights": {
 			"type": "motoko",
 			"main": "backend/src/ai_insights/main.mo"
-		},
-		"frontend": {
-			"type": "assets",
-			"source": [
-				"frontend/out"
-			]
 		}
 	},
 	"defaults": {
