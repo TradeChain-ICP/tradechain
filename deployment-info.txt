@@ -1,0 +1,2 @@
+User Management Canister: wuprw-oqaaa-aaaae-qfx4a-cai
+Candid Interface: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=wuprw-oqaaa-aaaae-qfx4a-cai

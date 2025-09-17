@@ -20,14 +20,38 @@
 		"ai_insights": {
 			"type": "motoko",
 			"main": "backend/src/ai_insights/main.mo"
+		},
+		"internet_identity": {
+			"type": "custom",
+			"candid": "canisters/internet_identity/internet_identity.did",
+			"wasm": "canisters/internet_identity/internet_identity_dev.wasm.gz",
+			"remote": {
+				"id": {
+					"ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+				}
+			}
 		}
 	},
 	"defaults": {
 		"build": {
 			"packtool": "vessel sources"
+		},
+		"generate": {
+			"output": "frontend/declarations"
+		},
+		"replica": {
+			"subnet_type": "system"
 		}
 	},
+	"output_env_file": ".env",
 	"networks": {
+		"local": {
+			"bind": "127.0.0.1:4943",
+			"type": "ephemeral",
+			"replica": {
+				"subnet_type": "system"
+			}
+		},
 		"ic": {
 			"providers": [
 				"https://icp-api.io"
