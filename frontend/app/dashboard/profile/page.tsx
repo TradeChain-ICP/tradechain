@@ -1,7 +1,7 @@
 // app/dashboard/profile/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Camera,
   Edit,
@@ -16,6 +16,7 @@ import {
   Globe,
   Building,
   Wallet,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,11 +35,14 @@ import Link from 'next/link';
 export default function ProfilePage() {
   const { toast } = useToast();
   const { contentPadding } = useContentPadding();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, updateProfilePicture } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
-  // Initialize profile data from user context
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -48,7 +52,6 @@ export default function ProfilePage() {
     location: '',
     website: '',
     company: '',
-    avatar: '/placeholder.svg?height=120&width=120',
     joinDate: '',
     verified: false,
     rating: 0,
@@ -67,16 +70,14 @@ export default function ProfilePage() {
     twoFactorAuth: true,
     publicProfile: true,
     showTradingStats: true,
-    darkMode: false,
   });
 
-  // Load user data when component mounts or user changes
   useEffect(() => {
     if (user) {
       setProfileData({
         firstName: user.firstName || 'User',
         lastName: user.lastName || 'Name',
-        email: user.principalId || 'user@example.com',
+        email: user.email || 'user@example.com',
         phone: user.phone || '',
         bio:
           user.bio ||
@@ -86,7 +87,6 @@ export default function ProfilePage() {
         location: user.location || 'Location not set',
         website: user.website || '',
         company: user.company || (user.role === 'seller' ? 'Premium Metals Co.' : 'Trading LLC'),
-        avatar: '/placeholder.svg?height=120&width=120',
         joinDate: user.joinedAt
           ? new Date(user.joinedAt).toLocaleDateString('en-US', {
               month: 'long',
@@ -99,16 +99,29 @@ export default function ProfilePage() {
         successRate: user.role === 'seller' ? 99.2 : 98.5,
         walletAddress: user.walletAddress || 'Not connected',
       });
+
+      // Set profile image preview if user has one
+      if (user.profilePicture) {
+        const blob = new Blob([user.profilePicture], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        setProfileImagePreview(url);
+      }
     }
   }, [user]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update profile via context
+      // Update profile picture if changed
+      if (profileImageFile) {
+        await updateProfilePicture(profileImageFile);
+      }
+
+      // Update profile data
       await updateProfile({
         firstName: profileData.firstName,
         lastName: profileData.lastName,
+        email: profileData.email,
         phone: profileData.phone,
         bio: profileData.bio,
         location: profileData.location,
@@ -117,6 +130,7 @@ export default function ProfilePage() {
       });
 
       setIsEditing(false);
+      setProfileImageFile(null);
       toast({
         title: 'Profile Updated',
         description: 'Your profile has been successfully updated.',
@@ -135,6 +149,9 @@ export default function ProfilePage() {
 
   const handleCancel = () => {
     setIsEditing(false);
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
+
     // Reset form data to original user data
     if (user) {
       setProfileData((prev) => ({
@@ -147,14 +164,55 @@ export default function ProfilePage() {
         website: user.website || prev.website,
         company: user.company || prev.company,
       }));
+
+      // Reset profile image preview
+      if (user.profilePicture) {
+        const blob = new Blob([user.profilePicture], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        setProfileImagePreview(url);
+      }
     }
   };
 
-  const handleAvatarChange = () => {
-    toast({
-      title: 'Avatar Upload',
-      description: 'Avatar upload functionality will be available soon.',
-    });
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        toast({
+          title: 'File Too Large',
+          description: 'Please select an image smaller than 5MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setProfileImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCopyWalletAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(profileData.walletAddress);
+      setCopySuccess(true);
+      toast({
+        title: 'Address Copied',
+        description: 'Wallet address copied to clipboard.',
+      });
+
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Could not copy address to clipboard.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getInitials = () => {
@@ -236,7 +294,7 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center text-center space-y-4">
                 <div className="relative">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={profileData.avatar || '/placeholder.svg'} />
+                    <AvatarImage src={profileImagePreview || '/placeholder.svg'} />
                     <AvatarFallback className="text-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
                       {getInitials()}
                     </AvatarFallback>
@@ -246,11 +304,18 @@ export default function ProfilePage() {
                       size="icon"
                       variant="outline"
                       className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-background"
-                      onClick={handleAvatarChange}
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       <Camera className="h-4 w-4" />
                     </Button>
                   )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                 </div>
 
                 <div className="space-y-2 w-full">
@@ -473,8 +538,18 @@ export default function ProfilePage() {
                     <Label>Connected Wallet</Label>
                     <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                       <Wallet className="h-4 w-4 text-primary" />
-                      <span className="font-mono text-sm">{profileData.walletAddress}</span>
-                      <Badge variant="outline" className="ml-auto">
+                      <span className="font-mono text-sm flex-1">{profileData.walletAddress}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyWalletAddress}
+                        className={`bg-transparent transition-all duration-300 ${
+                          copySuccess ? 'border-green-500 text-green-600' : ''
+                        }`}
+                      >
+                        {copySuccess ? <CheckCircle className="h-4 w-4 text-green-600" /> : 'Copy'}
+                      </Button>
+                      <Badge variant="outline" className="ml-2">
                         {user?.authMethod === 'nfid' ? 'NFID' : 'Internet Identity'}
                       </Badge>
                     </div>
@@ -702,34 +777,6 @@ export default function ProfilePage() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Login Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Login Activity</CardTitle>
-                  <CardDescription>Your recent login sessions and devices</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {mockLoginActivity.map((activity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <div className="font-medium">{activity.device}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {activity.location} • {activity.time}
-                          </div>
-                        </div>
-                        <Badge variant={activity.current ? 'default' : 'secondary'}>
-                          {activity.current ? 'Current' : 'Previous'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -737,31 +784,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-// Mock data
-const mockLoginActivity = [
-  {
-    device: 'Chrome on Windows',
-    location: 'Lagos, Nigeria',
-    time: '2 hours ago',
-    current: true,
-  },
-  {
-    device: 'Safari on iPhone',
-    location: 'Lagos, Nigeria',
-    time: '1 day ago',
-    current: false,
-  },
-  {
-    device: 'Firefox on macOS',
-    location: 'Abuja, Nigeria',
-    time: '3 days ago',
-    current: false,
-  },
-  {
-    device: 'Chrome on Android',
-    location: 'Lagos, Nigeria',
-    time: '1 week ago',
-    current: false,
-  },
-];

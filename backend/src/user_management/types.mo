@@ -6,13 +6,13 @@ import Blob "mo:base/Blob";
 
 module {
     
-    // User role enumeration
+    // User role enumeration - STABLE
     public type UserRole = {
         #buyer;
         #seller;
     };
 
-    // KYC status enumeration
+    // KYC status enumeration - STABLE
     public type KYCStatus = {
         #pending;
         #inReview;
@@ -20,13 +20,13 @@ module {
         #rejected;
     };
 
-    // Authentication method enumeration
+    // Authentication method enumeration - STABLE
     public type AuthMethod = {
         #nfid;
         #internetIdentity;
     };
 
-    // Token types supported by the wallet
+    // Token types supported by the wallet - STABLE
     public type TokenType = {
         #ICP;
         #USD;
@@ -34,7 +34,7 @@ module {
         #Euro;
     };
 
-    // Transaction types
+    // Transaction types - STABLE
     public type TransactionType = {
         #transfer;
         #deposit;
@@ -44,7 +44,7 @@ module {
         #refund;
     };
 
-    // Transaction status
+    // Transaction status - STABLE
     public type TransactionStatus = {
         #pending;
         #completed;
@@ -52,15 +52,15 @@ module {
         #cancelled;
     };
 
-    // Enhanced user type with profile data
+    // Enhanced user type with profile data - MADE STABLE
     public type User = {
         id: Text;
-        principalId: Text;
+        principalId: Text; // Changed from Principal to Text - STABLE
         firstName: Text;
         lastName: Text;
         email: Text;
         phone: ?Text;
-        profilePicture: ?Blob;
+        profilePicture: ?[Nat8]; // Changed from ?Blob to ?[Nat8] - STABLE
         role: ?UserRole;
         authMethod: AuthMethod;
         kycStatus: KYCStatus;
@@ -75,9 +75,9 @@ module {
         lastActive: Int;
     };
 
-    // Wallet type
+    // Wallet type - MADE STABLE
     public type Wallet = {
-        owner: Principal;
+        owner: Text; // Changed from Principal to Text - STABLE
         icpBalance: Nat;
         usdBalance: Nat;
         nairaBalance: Nat;
@@ -88,11 +88,11 @@ module {
         totalTransactions: Nat;
     };
 
-    // Transaction record
+    // Transaction record - MADE STABLE
     public type Transaction = {
         id: Text;
-        fromPrincipal: Principal;
-        toPrincipal: Principal;
+        fromPrincipal: Text; // Changed from Principal to Text - STABLE
+        toPrincipal: Text; // Changed from Principal to Text - STABLE
         amount: Nat;
         tokenType: TokenType;
         transactionType: TransactionType;
@@ -102,19 +102,19 @@ module {
         memo: ?Text;
     };
 
-    // Document type for KYC
+    // Document type for KYC - MADE STABLE
     public type Document = {
         id: Text;
         userId: Text;
         docType: Text; // "id_front", "id_back", "selfie", "proof_address"
         fileName: Text;
-        content: Blob;
+        content: [Nat8]; // Changed from Blob to [Nat8] - STABLE
         mimeType: Text;
         uploadedAt: Int;
         verified: Bool;
     };
 
-    // User profile update request
+    // User profile update request - MADE STABLE
     public type UserProfileUpdate = {
         firstName: Text;
         lastName: Text;
@@ -126,17 +126,17 @@ module {
         website: ?Text;
     };
 
-    // User registration request
+    // User registration request - MADE STABLE
     public type UserRegistration = {
         authMethod: AuthMethod;
         firstName: Text;
         lastName: Text;
         email: Text;
         phone: ?Text;
-        profilePicture: ?Blob;
+        profilePicture: ?[Nat8]; // Changed from ?Blob to ?[Nat8] - STABLE
     };
 
-    // Role selection with profile completion
+    // Role selection with profile completion - STABLE
     public type RoleSelection = {
         role: UserRole;
         bio: ?Text;
@@ -145,7 +145,7 @@ module {
         website: ?Text;
     };
 
-    // Balance summary
+    // Balance summary - STABLE
     public type BalanceSummary = {
         icp: Nat;
         usd: Nat;
@@ -154,15 +154,15 @@ module {
         totalValueUsd: Nat;
     };
 
-    // Transfer request
+    // Transfer request - MADE STABLE
     public type TransferRequest = {
-        to: Principal;
+        to: Text; // Changed from Principal to Text - STABLE
         amount: Nat;
         tokenType: TokenType;
         memo: ?Text;
     };
 
-    // Error types
+    // Error types - STABLE
     public type UserError = {
         #UserNotFound;
         #UserAlreadyExists;
@@ -180,20 +180,20 @@ module {
         #DocumentUploadFailed;
     };
 
-    // Query filters
+    // Query filters - STABLE
     public type UserFilter = {
         role: ?UserRole;
         kycStatus: ?KYCStatus;
         verified: ?Bool;
     };
 
-    // Pagination
+    // Pagination - STABLE
     public type Pagination = {
         offset: Nat;
         limit: Nat;
     };
 
-    // User statistics
+    // User statistics - STABLE
     public type UserStats = {
         totalUsers: Nat;
         verifiedUsers: Nat;
@@ -207,7 +207,7 @@ module {
         totalTransactions: Nat;
     };
 
-    // Wallet statistics
+    // Wallet statistics - STABLE
     public type WalletStats = {
         totalWallets: Nat;
         totalTransactions: Nat;
@@ -217,21 +217,21 @@ module {
         totalEuroLocked: Nat;
     };
 
-    // Session info
+    // Session info - MADE STABLE
     public type SessionInfo = {
         user: User;
         isValid: Bool;
         expiresAt: ?Int;
     };
 
-    // Document upload response
+    // Document upload response - STABLE
     public type DocumentUploadResponse = {
         documentId: Text;
         status: Text;
         uploadedAt: Int;
     };
 
-    // KYC submission response
+    // KYC submission response - STABLE
     public type KYCSubmissionResponse = {
         referenceId: Text;
         status: KYCStatus;
@@ -239,7 +239,7 @@ module {
         estimatedCompletion: ?Int;
     };
 
-    // Transaction page for pagination
+    // Transaction page for pagination - STABLE
     public type TransactionPage = {
         transactions: [Transaction];
         total: Nat;

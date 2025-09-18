@@ -31,81 +31,43 @@ persistent actor UserManagement {
     type Result<T, E> = Result.Result<T, E>;
     type UserId = Text;
 
-    // Stable storage for upgrades (removed redundant stable keywords)
-    private var userEntries : [(Principal, User)] = [];
-    private var walletEntries : [(Principal, Wallet)] = [];
-    private var transactionEntries : [(Text, Transaction)] = [];
-    private var documentEntries : [(Text, Document)] = [];
+    // Helper functions for type conversion
+    private func blobToBytes(blob: Blob) : [Nat8] {
+        Blob.toArray(blob)
+    };
+
+    private func bytesToBlob(bytes: [Nat8]) : Blob {
+        Blob.fromArray(bytes)
+    };
+
+    private func principalToText(p: Principal) : Text {
+        Principal.toText(p)
+    };
+
+    private func textToPrincipal(t: Text) : ?Principal {
+        Principal.fromText(t)
+    };
+
+    // Simple counters (automatically persistent)
     private var userIdCounter : Nat = 0;
     private var transactionIdCounter : Nat = 0;
 
-    // Runtime storage
-    private transient var users = HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
-    private transient var wallets = HashMap.HashMap<Principal, Wallet>(10, Principal.equal, Principal.hash);
-    private transient var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
-    private transient var documents = HashMap.HashMap<Text, Document>(50, Text.equal, Text.hash);
-    private transient var usersByRole = HashMap.HashMap<UserRole, [Principal]>(2, func(a: UserRole, b: UserRole) : Bool { a == b }, func(role: UserRole) : Nat32 {
+    // Runtime storage (automatically persistent with persistent actor - now using Text keys for Principals)
+    private var users = HashMap.HashMap<Text, User>(10, Text.equal, Text.hash);
+    private var wallets = HashMap.HashMap<Text, Wallet>(10, Text.equal, Text.hash);
+    private var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
+    private var documents = HashMap.HashMap<Text, Document>(50, Text.equal, Text.hash);
+    private var usersByRole = HashMap.HashMap<UserRole, [Text]>(2, func(a: UserRole, b: UserRole) : Bool { a == b }, func(role: UserRole) : Nat32 {
         switch(role) {
             case (#buyer) 0;
             case (#seller) 1;
         }
     });
-    private transient var userTransactions = HashMap.HashMap<Principal, [Text]>(10, Principal.equal, Principal.hash);
+    private var userTransactions = HashMap.HashMap<Text, [Text]>(10, Text.equal, Text.hash);
 
     // Helper function to convert Int to Nat safely
     private func intToNat(x: Int) : Nat {
         Int.abs(x)
-    };
-
-    // System functions for upgrades
-    system func preupgrade() {
-        userEntries := Iter.toArray(users.entries());
-        walletEntries := Iter.toArray(wallets.entries());
-        transactionEntries := Iter.toArray(transactions.entries());
-        documentEntries := Iter.toArray(documents.entries());
-    };
-
-    system func postupgrade() {
-        users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
-        wallets := HashMap.fromIter(walletEntries.vals(), walletEntries.size(), Principal.equal, Principal.hash);
-        transactions := HashMap.fromIter(transactionEntries.vals(), transactionEntries.size(), Text.equal, Text.hash);
-        documents := HashMap.fromIter(documentEntries.vals(), documentEntries.size(), Text.equal, Text.hash);
-        
-        userEntries := [];
-        walletEntries := [];
-        transactionEntries := [];
-        documentEntries := [];
-        
-        // Rebuild indexes
-        for ((principal, user) in users.entries()) {
-            switch(user.role) {
-                case (?role) {
-                    let existing = switch(usersByRole.get(role)) {
-                        case (?principals) principals;
-                        case null [];
-                    };
-                    usersByRole.put(role, Array.append(existing, [principal]));
-                };
-                case null {};
-            };
-        };
-
-        // Rebuild user transaction indexes
-        for ((txId, tx) in transactions.entries()) {
-            let userTxs = switch(userTransactions.get(tx.fromPrincipal)) {
-                case (?txs) Array.append(txs, [txId]);
-                case null [txId];
-            };
-            userTransactions.put(tx.fromPrincipal, userTxs);
-            
-            if (tx.fromPrincipal != tx.toPrincipal) {
-                let recipientTxs = switch(userTransactions.get(tx.toPrincipal)) {
-                    case (?txs) Array.append(txs, [txId]);
-                    case null [txId];
-                };
-                userTransactions.put(tx.toPrincipal, recipientTxs);
-            };
-        };
     };
 
     // Enhanced user registration with profile data
@@ -118,9 +80,10 @@ persistent actor UserManagement {
         profilePicture: ?Blob
     ) : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
         // Check if user already exists
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case (?existingUser) {
                 return #err("User already registered");
             };
@@ -131,21 +94,27 @@ persistent actor UserManagement {
         userIdCounter += 1;
         let userId = "user_" # Nat.toText(userIdCounter);
 
+        // Convert Blob to [Nat8] if present
+        let profilePictureBytes = switch(profilePicture) {
+            case null null;
+            case (?blob) ?blobToBytes(blob);
+        };
+
         // Create new user with enhanced profile
         let newUser : User = {
             id = userId;
-            principalId = Principal.toText(caller);
+            principalId = callerText;
             firstName = firstName;
             lastName = lastName;
             email = email;
             phone = phone;
-            profilePicture = profilePicture;
+            profilePicture = profilePictureBytes;
             role = null;
             authMethod = authMethod;
             kycStatus = #pending;
             kycSubmittedAt = null;
             verified = false;
-            walletAddress = Principal.toText(caller);
+            walletAddress = callerText;
             bio = null;
             location = null;
             company = null;
@@ -155,7 +124,7 @@ persistent actor UserManagement {
         };
 
         // Store user
-        users.put(caller, newUser);
+        users.put(callerText, newUser);
 
         // Create wallet automatically
         let _ = await createWalletForUser(caller);
@@ -173,8 +142,9 @@ persistent actor UserManagement {
         website: ?Text
     ) : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found. Please register first.")
             };
@@ -208,14 +178,14 @@ persistent actor UserManagement {
                             lastActive = Time.now();
                         };
 
-                        users.put(caller, updatedUser);
+                        users.put(callerText, updatedUser);
                         
                         // Update role index
                         let existing = switch(usersByRole.get(role)) {
                             case (?principals) principals;
                             case null [];
                         };
-                        usersByRole.put(role, Array.append(existing, [caller]));
+                        usersByRole.put(role, Array.append(existing, [callerText]));
                         
                         Debug.print("Role and profile set for user: " # user.id # " -> " # debug_show(role));
                         #ok(updatedUser)
@@ -228,8 +198,9 @@ persistent actor UserManagement {
     // Update profile picture
     public shared(msg) func updateProfilePicture(profilePicture: Blob) : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found")
             };
@@ -241,7 +212,7 @@ persistent actor UserManagement {
                     lastName = user.lastName;
                     email = user.email;
                     phone = user.phone;
-                    profilePicture = ?profilePicture;
+                    profilePicture = ?blobToBytes(profilePicture);
                     role = user.role;
                     authMethod = user.authMethod;
                     kycStatus = user.kycStatus;
@@ -256,7 +227,7 @@ persistent actor UserManagement {
                     lastActive = Time.now();
                 };
                 
-                users.put(caller, updatedUser);
+                users.put(callerText, updatedUser);
                 #ok(updatedUser)
             };
         };
@@ -270,9 +241,10 @@ persistent actor UserManagement {
         mimeType: Text
     ) : async Result<Text, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
         // Check if user exists
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null return #err("User not found");
             case (?_) {};
         };
@@ -281,10 +253,10 @@ persistent actor UserManagement {
         
         let document : Document = {
             id = docId;
-            userId = Principal.toText(caller);
+            userId = callerText;
             docType = docType;
             fileName = fileName;
-            content = content;
+            content = blobToBytes(content);
             mimeType = mimeType;
             uploadedAt = Time.now();
             verified = false;
@@ -299,11 +271,11 @@ persistent actor UserManagement {
     // Get user's KYC documents
     public shared(msg) func getUserDocuments() : async [Document] {
         let caller = msg.caller;
-        let userId = Principal.toText(caller);
+        let callerText = principalToText(caller);
         
         let userDocs = Array.filter<Document>(
             Iter.toArray(documents.vals()),
-            func(doc) = doc.userId == userId
+            func(doc) = doc.userId == callerText
         );
         
         userDocs
@@ -312,8 +284,9 @@ persistent actor UserManagement {
     // Submit KYC for review
     public shared(msg) func submitKYCForReview() : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found")
             };
@@ -346,7 +319,7 @@ persistent actor UserManagement {
                     lastActive = Time.now();
                 };
 
-                users.put(caller, updatedUser);
+                users.put(callerText, updatedUser);
                 Debug.print("KYC submitted for review: " # user.id);
                 #ok(updatedUser)
             };
@@ -357,8 +330,10 @@ persistent actor UserManagement {
 
     // Create wallet for user (internal function)
     private func createWalletForUser(userPrincipal: Principal) : async Result<Wallet, Text> {
+        let userText = principalToText(userPrincipal);
+        
         // Check if wallet already exists
-        switch(wallets.get(userPrincipal)) {
+        switch(wallets.get(userText)) {
             case (?existingWallet) {
                 return #ok(existingWallet);
             };
@@ -367,7 +342,7 @@ persistent actor UserManagement {
 
         // Create new wallet
         let newWallet : Wallet = {
-            owner = userPrincipal;
+            owner = userText;
             icpBalance = 0;
             usdBalance = 0;
             nairaBalance = 0;
@@ -378,17 +353,18 @@ persistent actor UserManagement {
             totalTransactions = 0;
         };
 
-        wallets.put(userPrincipal, newWallet);
+        wallets.put(userText, newWallet);
         
-        Debug.print("Wallet created for: " # Principal.toText(userPrincipal));
+        Debug.print("Wallet created for: " # userText);
         #ok(newWallet)
     };
 
     // Get user's wallet
     public shared(msg) func getWallet() : async Result<Wallet, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(wallets.get(caller)) {
+        switch(wallets.get(callerText)) {
             case null {
                 // Create wallet if it doesn't exist
                 await createWalletForUser(caller)
@@ -399,11 +375,12 @@ persistent actor UserManagement {
         };
     };
 
-    // Get wallet balance for specific token
+		// Get wallet balance for specific token
     public shared(msg) func getBalance(tokenType: TokenType) : async Result<Nat, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(wallets.get(caller)) {
+        switch(wallets.get(callerText)) {
             case null {
                 #err("Wallet not found")
             };
@@ -436,6 +413,8 @@ persistent actor UserManagement {
         memo: ?Text
     ) : async Result<Text, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
+        let toText = principalToText(to);
         
         // Validate amount
         if (amount == 0) {
@@ -443,7 +422,7 @@ persistent actor UserManagement {
         };
 
         // Get sender wallet
-        let senderWallet = switch(wallets.get(caller)) {
+        let senderWallet = switch(wallets.get(callerText)) {
             case null return #err("Sender wallet not found");
             case (?wallet) wallet;
         };
@@ -486,12 +465,12 @@ persistent actor UserManagement {
         };
 
         // Get or create recipient wallet
-        let recipientWallet = switch(wallets.get(to)) {
+        let recipientWallet = switch(wallets.get(toText)) {
             case (?wallet) wallet;
             case null {
                 // Create wallet for recipient
                 let newWallet : Wallet = {
-                    owner = to;
+                    owner = toText;
                     icpBalance = 0;
                     usdBalance = 0;
                     nairaBalance = 0;
@@ -501,7 +480,7 @@ persistent actor UserManagement {
                     isLocked = false;
                     totalTransactions = 0;
                 };
-                wallets.put(to, newWallet);
+                wallets.put(toText, newWallet);
                 newWallet;
             };
         };
@@ -625,8 +604,8 @@ persistent actor UserManagement {
         // Create transaction record
         let transaction : Transaction = {
             id = txId;
-            fromPrincipal = caller;
-            toPrincipal = to;
+            fromPrincipal = callerText;
+            toPrincipal = toText;
             amount = amount;
             tokenType = tokenType;
             transactionType = #transfer;
@@ -637,22 +616,22 @@ persistent actor UserManagement {
         };
 
         // Save updated wallets and transaction
-        wallets.put(caller, updatedSenderWallet);
-        wallets.put(to, updatedRecipientWallet);
+        wallets.put(callerText, updatedSenderWallet);
+        wallets.put(toText, updatedRecipientWallet);
         transactions.put(txId, transaction);
 
         // Update user transaction indexes
-        let senderTxs = switch(userTransactions.get(caller)) {
+        let senderTxs = switch(userTransactions.get(callerText)) {
             case (?txs) Array.append(txs, [txId]);
             case null [txId];
         };
-        userTransactions.put(caller, senderTxs);
+        userTransactions.put(callerText, senderTxs);
 
-        let recipientTxs = switch(userTransactions.get(to)) {
+        let recipientTxs = switch(userTransactions.get(toText)) {
             case (?txs) Array.append(txs, [txId]);
             case null [txId];
         };
-        userTransactions.put(to, recipientTxs);
+        userTransactions.put(toText, recipientTxs);
 
         Debug.print("Transfer completed: " # txId);
         #ok(txId)
@@ -661,9 +640,10 @@ persistent actor UserManagement {
     // Add funds to wallet (for testing/demo purposes)
     public shared(msg) func addFunds(amount: Nat, tokenType: TokenType) : async Result<(), Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
         // Get wallet
-        let wallet = switch(wallets.get(caller)) {
+        let wallet = switch(wallets.get(callerText)) {
             case null return #err("Wallet not found");
             case (?w) w;
         };
@@ -724,15 +704,16 @@ persistent actor UserManagement {
             };
         };
 
-        wallets.put(caller, updatedWallet);
+        wallets.put(callerText, updatedWallet);
         #ok(())
     };
 
     // Get transaction history for user
     public shared(msg) func getTransactionHistory() : async [Transaction] {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        let userTxIds = switch(userTransactions.get(caller)) {
+        let userTxIds = switch(userTransactions.get(callerText)) {
             case (?txIds) txIds;
             case null [];
         };
@@ -745,8 +726,9 @@ persistent actor UserManagement {
     // Get current user profile
     public shared(msg) func getCurrentUser() : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found")
             };
@@ -774,7 +756,7 @@ persistent actor UserManagement {
                     lastActive = Time.now();
                 };
                 
-                users.put(caller, updatedUser);
+                users.put(callerText, updatedUser);
                 #ok(updatedUser)
             };
         };
@@ -783,8 +765,9 @@ persistent actor UserManagement {
     // Update KYC status
     public shared(msg) func updateKYCStatus(status: KYCStatus) : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found")
             };
@@ -817,7 +800,7 @@ persistent actor UserManagement {
                     lastActive = Time.now();
                 };
 
-                users.put(caller, updatedUser);
+                users.put(callerText, updatedUser);
                 Debug.print("KYC status updated for user: " # user.id # " -> " # debug_show(status));
                 #ok(updatedUser)
             };
@@ -836,8 +819,9 @@ persistent actor UserManagement {
         website: ?Text
     ) : async Result<User, Text> {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null {
                 #err("User not found")
             };
@@ -864,7 +848,7 @@ persistent actor UserManagement {
                     lastActive = Time.now();
                 };
 
-                users.put(caller, updatedUser);
+                users.put(callerText, updatedUser);
                 #ok(updatedUser)
             };
         };
@@ -872,19 +856,20 @@ persistent actor UserManagement {
 
     // Get users by role (admin function)
     public query func getUsersByRole(role: UserRole) : async [User] {
-        let principals = switch(usersByRole.get(role)) {
-            case (?principals) principals;
+        let principalTexts = switch(usersByRole.get(role)) {
+            case (?texts) texts;
             case null [];
         };
         
-        Array.mapFilter<Principal, User>(principals, func(principal) {
-            users.get(principal)
+        Array.mapFilter<Text, User>(principalTexts, func(principalText) {
+            users.get(principalText)
         })
     };
 
     // Get user by principal (admin function)
     public query func getUserByPrincipal(principal: Principal) : async ?User {
-        users.get(principal)
+        let principalText = principalToText(principal);
+        users.get(principalText)
     };
 
     // Get total user count
@@ -947,7 +932,8 @@ persistent actor UserManagement {
 
     // Check if user exists
     public shared(msg) func userExists() : async Bool {
-        switch(users.get(msg.caller)) {
+        let callerText = principalToText(msg.caller);
+        switch(users.get(callerText)) {
             case null false;
             case (?_) true;
         };
@@ -1002,9 +988,9 @@ persistent actor UserManagement {
 
     // Lock/unlock wallet (admin function)
     public shared(msg) func setWalletLock(owner: Principal, isLocked: Bool) : async Result<(), Text> {
-        // In a real implementation, you'd check admin permissions here
+        let ownerText = principalToText(owner);
         
-        switch(wallets.get(owner)) {
+        switch(wallets.get(ownerText)) {
             case null {
                 #err("Wallet not found")
             };
@@ -1021,7 +1007,7 @@ persistent actor UserManagement {
                     totalTransactions = wallet.totalTransactions;
                 };
                 
-                wallets.put(owner, updatedWallet);
+                wallets.put(ownerText, updatedWallet);
                 #ok(())
             };
         };
@@ -1030,17 +1016,21 @@ persistent actor UserManagement {
     // Get user's profile picture
     public shared(msg) func getProfilePicture() : async ?Blob {
         let caller = msg.caller;
+        let callerText = principalToText(caller);
         
-        switch(users.get(caller)) {
+        switch(users.get(callerText)) {
             case null null;
-            case (?user) user.profilePicture;
+            case (?user) {
+                switch(user.profilePicture) {
+                    case null null;
+                    case (?bytes) ?bytesToBlob(bytes);
+                };
+            };
         };
     };
 
     // Verify document (admin function)
     public shared(msg) func verifyDocument(docId: Text, verified: Bool) : async Result<(), Text> {
-        // In a real implementation, you'd check admin permissions here
-        
         switch(documents.get(docId)) {
             case null {
                 #err("Document not found")
@@ -1071,14 +1061,14 @@ persistent actor UserManagement {
     // Delete document
     public shared(msg) func deleteDocument(docId: Text) : async Result<(), Text> {
         let caller = msg.caller;
-        let userId = Principal.toText(caller);
+        let callerText = principalToText(caller);
         
         switch(documents.get(docId)) {
             case null {
                 #err("Document not found")
             };
             case (?doc) {
-                if (doc.userId != userId) {
+                if (doc.userId != callerText) {
                     return #err("Unauthorized to delete this document");
                 };
                 
@@ -1091,14 +1081,14 @@ persistent actor UserManagement {
     // Get document by ID (for authorized users only)
     public shared(msg) func getDocument(docId: Text) : async Result<Document, Text> {
         let caller = msg.caller;
-        let userId = Principal.toText(caller);
+        let callerText = principalToText(caller);
         
         switch(documents.get(docId)) {
             case null {
                 #err("Document not found")
             };
             case (?doc) {
-                if (doc.userId != userId) {
+                if (doc.userId != callerText) {
                     return #err("Unauthorized to access this document");
                 };
                 
