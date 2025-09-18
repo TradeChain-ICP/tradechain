@@ -1,5 +1,4 @@
-// frontend/lib/icp-agent.ts - Updated for NFID compatibility
-
+// frontend/lib/icp-agent.ts
 import { Actor, HttpAgent, Identity } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { Principal } from '@dfinity/principal';
@@ -11,56 +10,35 @@ import {
 
 // Import IDL definitions with error handling
 let userManagementIdl: any;
-let walletIdl: any;
-let marketplaceIdl: any;
-let escrowIdl: any;
-let aiInsightsIdl: any;
 
 try {
   userManagementIdl = require('../declarations/user_management').idlFactory;
-  walletIdl = require('../declarations/wallet').idlFactory;
-  marketplaceIdl = require('../declarations/marketplace').idlFactory;
-  escrowIdl = require('../declarations/escrow').idlFactory;
-  aiInsightsIdl = require('../declarations/ai_insights').idlFactory;
-  console.log('✅ Canister declarations loaded successfully');
+  console.log('✅ User management declaration loaded successfully');
 } catch (error) {
-  console.warn('⚠️ Could not import canister declarations, using mock mode');
+  console.warn('⚠️ Could not import user management declaration, using mock mode');
 }
 
-// Configuration
+// Configuration with updated canister ID
 const CONFIG = {
   HOST: process.env.NEXT_PUBLIC_IC_HOST || 'http://localhost:4943',
   INTERNET_IDENTITY_URL:
     process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
   NFID_URL: process.env.NEXT_PUBLIC_NFID_URL || 'https://nfid.one/authenticate',
-  USER_MANAGEMENT_CANISTER_ID: process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'wuprw-oqaaa-aaaae-qfx4a-cai',
-  WALLET_CANISTER_ID: process.env.NEXT_PUBLIC_WALLET_CANISTER_ID || 'umunu-kh777-77774-qaaca-cai',
-  MARKETPLACE_CANISTER_ID:
-    process.env.NEXT_PUBLIC_MARKETPLACE_CANISTER_ID || 'ulvla-h7777-77774-qaacq-cai',
-  ESCROW_CANISTER_ID: process.env.NEXT_PUBLIC_ESCROW_CANISTER_ID || 'ucwa4-rx777-77774-qaada-cai',
-  AI_INSIGHTS_CANISTER_ID:
-    process.env.NEXT_PUBLIC_AI_INSIGHTS_CANISTER_ID || 'ufxgi-4p777-77774-qaadq-cai',
+  USER_MANAGEMENT_CANISTER_ID:
+    process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'wuprw-oqaaa-aaaae-qfx4a-cai',
   DISABLE_SIGNATURE_VALIDATION: process.env.NEXT_PUBLIC_DISABLE_SIGNATURE_VALIDATION === 'true',
 };
 
-console.log('🔧 Enhanced ICP Agent Configuration:', {
+console.log('🔧 Updated ICP Agent Configuration:', {
   ...CONFIG,
   DISABLE_SIGNATURE_VALIDATION: CONFIG.DISABLE_SIGNATURE_VALIDATION,
   DEV_MODE: process.env.NODE_ENV === 'development',
 });
 
-export interface ICPActor {
-  userManagement: any;
-  wallet: any;
-  marketplace: any;
-  escrow: any;
-  aiInsights: any;
-}
-
 class ICPAgentManager {
   private authClient: AuthClient | null = null;
   private agent: HttpAgent | null = null;
-  private actors: ICPActor | null = null;
+  private userManagementActor: any = null;
   private identity: Identity | null = null;
 
   async init(): Promise<void> {
@@ -78,13 +56,13 @@ class ICPAgentManager {
         console.log('✅ User already authenticated');
         this.identity = this.authClient.getIdentity();
         await this.createAgent();
-        await this.createActors();
+        await this.createUserManagementActor();
       } else {
         console.log('ℹ️ User not authenticated');
       }
     } catch (error) {
       console.error('❌ Failed to initialize Enhanced ICP agent:', error);
-      await this.createMockActors();
+      await this.createMockActor();
     }
   }
 
@@ -98,11 +76,9 @@ class ICPAgentManager {
     this.agent = new HttpAgent({
       host: CONFIG.HOST,
       identity: this.identity,
-      // Only disable signature verification in development for NFID compatibility
       verifyQuerySignatures: process.env.NODE_ENV !== 'development',
     });
 
-    // Fetch root key for local development
     if (process.env.NODE_ENV === 'development') {
       try {
         await this.agent.fetchRootKey();
@@ -113,60 +89,32 @@ class ICPAgentManager {
     }
   }
 
-  private async createActors(): Promise<void> {
+  private async createUserManagementActor(): Promise<void> {
     if (!this.agent || !userManagementIdl) {
-      console.log('⚠️ Missing agent or IDL, creating mock actors');
-      await this.createMockActors();
+      console.log('⚠️ Missing agent or IDL, creating mock actor');
+      await this.createMockActor();
       return;
     }
 
     try {
-      console.log('🎭 Creating enhanced canister actors...');
+      console.log('🎭 Creating user management actor...');
 
       const createActorOptions = {
         agent: this.agent,
-        // Only disable query verification in development for NFID compatibility
         queryVerificationDisabled: process.env.NODE_ENV === 'development',
       };
 
-      // Create actors with enhanced error handling
-      this.actors = {
-        userManagement: this.createActor(
-          userManagementIdl,
-          CONFIG.USER_MANAGEMENT_CANISTER_ID,
-          createActorOptions,
-          'UserManagement'
-        ),
-        wallet: this.createActor(
-          walletIdl,
-          CONFIG.WALLET_CANISTER_ID,
-          createActorOptions,
-          'Wallet'
-        ),
-        marketplace: this.createActor(
-          marketplaceIdl,
-          CONFIG.MARKETPLACE_CANISTER_ID,
-          createActorOptions,
-          'Marketplace'
-        ),
-        escrow: this.createActor(
-          escrowIdl,
-          CONFIG.ESCROW_CANISTER_ID,
-          createActorOptions,
-          'Escrow'
-        ),
-        aiInsights: this.createActor(
-          aiInsightsIdl,
-          CONFIG.AI_INSIGHTS_CANISTER_ID,
-          createActorOptions,
-          'AIInsights'
-        ),
-      };
+      this.userManagementActor = this.createActor(
+        userManagementIdl,
+        CONFIG.USER_MANAGEMENT_CANISTER_ID,
+        createActorOptions,
+        'UserManagement'
+      );
 
-      console.log('✅ All enhanced canister actors created successfully');
+      console.log('✅ User management actor created successfully');
     } catch (error) {
-      console.error('❌ Failed to create enhanced actors:', error);
-      await this.createMockActors();
+      console.error('❌ Failed to create user management actor:', error);
+      await this.createMockActor();
     }
   }
 
@@ -176,7 +124,6 @@ class ICPAgentManager {
       canisterId,
     });
 
-    // Wrap actor methods with enhanced error handling
     return new Proxy(baseActor, {
       get: (target, prop) => {
         const originalMethod = target[prop as keyof typeof target];
@@ -187,7 +134,6 @@ class ICPAgentManager {
               return await originalMethod.apply(target, args);
             } catch (error: any) {
               if (handleDevelopmentError(error, `${actorName}.${String(prop)}`)) {
-                // Return mock response based on method name
                 return this.createMethodMockResponse(String(prop));
               }
               throw error;
@@ -213,100 +159,80 @@ class ICPAgentManager {
           status: 'healthy',
           timestamp: BigInt(Date.now() * 1000000),
           userCount: BigInt(1),
+          walletCount: BigInt(1),
         };
       case 'getWallet':
         return {
           ok: {
             owner: 'mock-principal',
-            icpBalance: BigInt(100000000), // 1 ICP
-            usdBalance: BigInt(10000), // 100 USD
-            nairaBalance: BigInt(5000000), // 50,000 NGN
-            euroBalance: BigInt(8500), // 85 EUR
+            icpBalance: BigInt(100000000),
+            usdBalance: BigInt(10000),
+            nairaBalance: BigInt(5000000),
+            euroBalance: BigInt(8500),
             createdAt: BigInt(Date.now() * 1000000),
             lastTransactionAt: BigInt(Date.now() * 1000000),
             isLocked: false,
             totalTransactions: BigInt(5),
           },
         };
-      case 'createWallet':
-        return {
-          ok: {
-            owner: 'mock-principal',
-            icpBalance: BigInt(0),
-            usdBalance: BigInt(0),
-            nairaBalance: BigInt(0),
-            euroBalance: BigInt(0),
-            createdAt: BigInt(Date.now() * 1000000),
-            lastTransactionAt: BigInt(Date.now() * 1000000),
-            isLocked: false,
-            totalTransactions: BigInt(0),
-          },
-        };
       case 'getBalance':
-        return { ok: BigInt(100000000) }; // 1 ICP
+        return { ok: BigInt(100000000) };
       case 'transfer':
         return { ok: `tx_${Date.now()}` };
       case 'addFunds':
         return { ok: null };
       case 'getTransactionHistory':
         return [];
+      case 'uploadKYCDocument':
+        return { ok: `doc_${Date.now()}` };
+      case 'getUserDocuments':
+        return [];
+      case 'submitKYCForReview':
+        return createMockSuccessResponse('submitKYCForReview');
+      case 'updateKYCStatus':
+        return createMockSuccessResponse('updateKYCStatus');
+      case 'updateProfile':
+        return createMockSuccessResponse('updateProfile');
+      case 'updateProfilePicture':
+        return createMockSuccessResponse('updateProfilePicture');
       default:
         return { ok: 'mock_success' };
     }
   }
 
-  private async createMockActors(): Promise<void> {
-    console.log('🎭 Creating enhanced mock actors...');
+  private async createMockActor(): Promise<void> {
+    console.log('🎭 Creating enhanced mock actor...');
 
     const createMockMethod =
       (methodName: string) =>
       async (...args: any[]) => {
         console.log(`🎭 Mock ${methodName} called with:`, args);
-
-        // Add realistic delays
         await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 1000));
-
         return this.createMethodMockResponse(methodName);
       };
 
-    this.actors = {
-      userManagement: {
-        userExists: createMockMethod('userExists'),
-        getCurrentUser: createMockMethod('getCurrentUser'),
-        registerUser: createMockMethod('registerUser'),
-        setUserRole: createMockMethod('setUserRole'),
-        updateKYCStatus: createMockMethod('updateKYCStatus'),
-        updateProfile: createMockMethod('updateProfile'),
-        healthCheck: createMockMethod('healthCheck'),
-      },
-      wallet: {
-        getWallet: createMockMethod('getWallet'),
-        createWallet: createMockMethod('createWallet'),
-        getBalance: createMockMethod('getBalance'),
-        transfer: createMockMethod('transfer'),
-        addFunds: createMockMethod('addFunds'),
-        getTransactionHistory: createMockMethod('getTransactionHistory'),
-        healthCheck: createMockMethod('healthCheck'),
-      },
-      marketplace: {
-        healthCheck: createMockMethod('healthCheck'),
-        getProducts: createMockMethod('getProducts'),
-        listProduct: createMockMethod('listProduct'),
-      },
-      escrow: {
-        healthCheck: createMockMethod('healthCheck'),
-        createEscrow: createMockMethod('createEscrow'),
-      },
-      aiInsights: {
-        healthCheck: createMockMethod('healthCheck'),
-        getInsights: createMockMethod('getInsights'),
-      },
+    this.userManagementActor = {
+      userExists: createMockMethod('userExists'),
+      getCurrentUser: createMockMethod('getCurrentUser'),
+      registerUser: createMockMethod('registerUser'),
+      setUserRole: createMockMethod('setUserRole'),
+      updateKYCStatus: createMockMethod('updateKYCStatus'),
+      updateProfile: createMockMethod('updateProfile'),
+      updateProfilePicture: createMockMethod('updateProfilePicture'),
+      uploadKYCDocument: createMockMethod('uploadKYCDocument'),
+      getUserDocuments: createMockMethod('getUserDocuments'),
+      submitKYCForReview: createMockMethod('submitKYCForReview'),
+      getWallet: createMockMethod('getWallet'),
+      getBalance: createMockMethod('getBalance'),
+      transfer: createMockMethod('transfer'),
+      addFunds: createMockMethod('addFunds'),
+      getTransactionHistory: createMockMethod('getTransactionHistory'),
+      healthCheck: createMockMethod('healthCheck'),
     };
 
-    console.log('✅ Enhanced mock actors created');
+    console.log('✅ Enhanced mock actor created');
   }
 
-  // Authentication methods with enhanced error handling for NFID
   async authenticateWithII(): Promise<boolean> {
     console.log('🔐 Starting Internet Identity authentication...');
 
@@ -323,12 +249,12 @@ class ICPAgentManager {
             console.log('✅ Internet Identity authentication successful');
             this.identity = this.authClient!.getIdentity();
             await this.createAgent();
-            await this.createActors();
+            await this.createUserManagementActor();
             resolve(true);
           } catch (error) {
             if (handleDevelopmentError(error, 'II Post-Auth Setup')) {
               console.log('🎭 Using mock setup after II auth');
-              await this.createMockActors();
+              await this.createMockActor();
               resolve(true);
             } else {
               reject(error);
@@ -360,15 +286,12 @@ class ICPAgentManager {
           try {
             console.log('✅ NFID authentication successful');
             this.identity = this.authClient!.getIdentity();
-
-            // CRITICAL: Force create agent with disabled signature verification
             await this.createAgentForNFID();
-            await this.createActors();
+            await this.createUserManagementActor();
             resolve(true);
           } catch (error) {
-            // For NFID, always fall back to mock since signature validation fails
             console.log('🎭 NFID signature validation failed, using mock setup');
-            await this.createMockActors();
+            await this.createMockActor();
             resolve(true);
           }
         },
@@ -380,7 +303,6 @@ class ICPAgentManager {
     });
   }
 
-  // Special agent creation for NFID that disables signature verification only in development
   private async createAgentForNFID(): Promise<void> {
     if (!this.identity) {
       throw new Error('No identity available');
@@ -391,11 +313,9 @@ class ICPAgentManager {
     this.agent = new HttpAgent({
       host: CONFIG.HOST,
       identity: this.identity,
-      // Only disable for development, enable in production
       verifyQuerySignatures: process.env.NODE_ENV !== 'development',
     });
 
-    // Only fetch root key in development
     if (process.env.NODE_ENV === 'development') {
       try {
         await this.agent.fetchRootKey();
@@ -406,19 +326,17 @@ class ICPAgentManager {
     }
   }
 
-  // Logout
   async logout(): Promise<void> {
     if (this.authClient) {
       console.log('👋 Logging out...');
       await this.authClient.logout();
       this.identity = null;
       this.agent = null;
-      this.actors = null;
+      this.userManagementActor = null;
       console.log('✅ Logout successful');
     }
   }
 
-  // Check authentication status
   async isAuthenticated(): Promise<boolean> {
     if (!this.authClient) {
       await this.init();
@@ -426,7 +344,6 @@ class ICPAgentManager {
     return this.authClient?.isAuthenticated() || false;
   }
 
-  // Getters
   getIdentity(): Identity | null {
     return this.identity;
   }
@@ -435,41 +352,20 @@ class ICPAgentManager {
     return this.identity?.getPrincipal() || null;
   }
 
-  getActors(): ICPActor | null {
-    return this.actors;
-  }
-
   getUserManagementActor() {
-    return this.actors?.userManagement;
+    return this.userManagementActor;
   }
 
-  getWalletActor() {
-    return this.actors?.wallet;
-  }
-
-  getMarketplaceActor() {
-    return this.actors?.marketplace;
-  }
-
-  getEscrowActor() {
-    return this.actors?.escrow;
-  }
-
-  getAIInsightsActor() {
-    return this.actors?.aiInsights;
-  }
-
-  // Health check
   async healthCheck(): Promise<boolean> {
     try {
-      if (!this.actors?.userManagement) {
+      if (!this.userManagementActor) {
         return false;
       }
-      const result = await this.actors.userManagement.healthCheck();
+      const result = await this.userManagementActor.healthCheck();
       return result?.status === 'healthy';
     } catch (error) {
       if (handleDevelopmentError(error, 'Health Check')) {
-        return true; // Mock healthy response
+        return true;
       }
       console.error('Health check failed:', error);
       return false;
@@ -477,9 +373,8 @@ class ICPAgentManager {
   }
 }
 
-// Export singleton with correct naming (note: keeping both exports for compatibility)
-export const icpAgent = new ICPAgentManager();
-export const IcpAgent = icpAgent; // For backward compatibility
+// Export singleton
+export const IcpAgent = new ICPAgentManager();
 
 // Helper functions
 export const connectWallet = async (method: 'nfid' | 'internet-identity'): Promise<boolean> => {
@@ -487,14 +382,13 @@ export const connectWallet = async (method: 'nfid' | 'internet-identity'): Promi
     console.log(`🔗 Enhanced wallet connection with ${method}...`);
 
     if (method === 'nfid') {
-      return await icpAgent.authenticateWithNFID();
+      return await IcpAgent.authenticateWithNFID();
     } else {
-      return await icpAgent.authenticateWithII();
+      return await IcpAgent.authenticateWithII();
     }
   } catch (error) {
     console.error('❌ Enhanced wallet connection failed:', error);
 
-    // In development mode, allow fallback to mock for NFID
     if (process.env.NODE_ENV === 'development' && method === 'nfid') {
       console.log('🎭 Falling back to mock NFID authentication');
       return true;
@@ -505,20 +399,20 @@ export const connectWallet = async (method: 'nfid' | 'internet-identity'): Promi
 };
 
 export const disconnectWallet = async (): Promise<void> => {
-  await icpAgent.logout();
+  await IcpAgent.logout();
 };
 
 export const isWalletConnected = async (): Promise<boolean> => {
-  return await icpAgent.isAuthenticated();
+  return await IcpAgent.isAuthenticated();
 };
 
 export const getCurrentPrincipal = (): string | null => {
-  const principal = icpAgent.getPrincipal();
+  const principal = IcpAgent.getPrincipal();
   return principal ? principal.toText() : null;
 };
 
 // Initialize on load
 if (typeof window !== 'undefined') {
   console.log('🚀 Initializing Enhanced ICP agent...');
-  icpAgent.init().catch(console.error);
+  IcpAgent.init().catch(console.error);
 }

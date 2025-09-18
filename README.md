@@ -2,7 +2,7 @@
 
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
-**🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)
+**🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)  
 **🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)  
 **📝 Documentation:** [Documentation URL](https://trade-chain-icp.vercel.app/docs)
 

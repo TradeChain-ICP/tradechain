@@ -1,3 +1,5 @@
+// canisters/internet_identity/internet_identity.did
+
 type UserNumber = nat64;
 type AccountNumber = nat64;
 type PublicKey = blob;

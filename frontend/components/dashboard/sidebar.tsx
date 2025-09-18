@@ -91,7 +91,7 @@ const buyerNavigation: NavigationItem[] = [
   },
   {
     name: 'Wallet',
-    href: '/dashboard/buyer/wallet',
+    href: '/dashboard/wallet',
     icon: Wallet,
     badge: null,
     disabled: false,
@@ -150,7 +150,7 @@ const sellerNavigation: NavigationItem[] = [
   },
   {
     name: 'Wallet',
-    href: '/dashboard/seller/wallet',
+    href: '/dashboard/wallet',
     icon: Wallet,
     badge: null,
     disabled: false,

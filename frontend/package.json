@@ -6,7 +6,11 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "deploy:local": "npm run build && dfx deploy frontend --network local",
+    "deploy:ic": "../scripts/deploy-frontend-to-icp.sh",
+    "generate": "dfx generate",
+    "prebuild": "dfx generate"
   },
   "dependencies": {
     "@auth/core": "latest",

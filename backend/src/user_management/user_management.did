@@ -17,19 +17,85 @@ type AuthMethod = variant {
   internetIdentity;
 };
 
+type TokenType = variant {
+  ICP;
+  USD;
+  Naira;
+  Euro;
+};
+
+type TransactionType = variant {
+  transfer;
+  deposit;
+  withdrawal;
+  escrow;
+  payment;
+  refund;
+};
+
+type TransactionStatus = variant {
+  pending;
+  completed;
+  failed;
+  cancelled;
+};
+
 type User = record {
   id: text;
   principalId: text;
   firstName: text;
   lastName: text;
+  email: text;
+  phone: opt text;
+  profilePicture: opt blob;
   role: opt UserRole;
   authMethod: AuthMethod;
   kycStatus: KYCStatus;
   kycSubmittedAt: opt int;
   verified: bool;
   walletAddress: text;
+  bio: opt text;
+  location: opt text;
+  company: opt text;
+  website: opt text;
   joinedAt: int;
   lastActive: int;
+};
+
+type Wallet = record {
+  owner: principal;
+  icpBalance: nat;
+  usdBalance: nat;
+  nairaBalance: nat;
+  euroBalance: nat;
+  createdAt: int;
+  lastTransactionAt: int;
+  isLocked: bool;
+  totalTransactions: nat;
+};
+
+type Transaction = record {
+  id: text;
+  fromPrincipal: principal;
+  toPrincipal: principal;
+  amount: nat;
+  tokenType: TokenType;
+  transactionType: TransactionType;
+  status: TransactionStatus;
+  createdAt: int;
+  completedAt: opt int;
+  memo: opt text;
+};
+
+type Document = record {
+  id: text;
+  userId: text;
+  docType: text;
+  fileName: text;
+  content: blob;
+  mimeType: text;
+  uploadedAt: int;
+  verified: bool;
 };
 
 type UserStats = record {
@@ -39,12 +105,22 @@ type UserStats = record {
   kycInReview: nat;
   kycCompleted: nat;
   kycRejected: nat;
+  totalWallets: nat;
+  totalTransactions: nat;
+};
+
+type WalletStats = record {
+  totalWallets: nat;
+  totalTransactions: nat;
+  totalIcpLocked: nat;
+  totalUsdLocked: nat;
 };
 
 type HealthCheck = record {
   status: text;
   timestamp: int;
   userCount: nat;
+  walletCount: nat;
 };
 
 type Result_User = variant {
@@ -52,22 +128,62 @@ type Result_User = variant {
   err: text;
 };
 
-type Result_Bool = variant {
-  ok: bool;
+type Result_Text = variant {
+  ok: text;
+  err: text;
+};
+
+type Result_Nat = variant {
+  ok: nat;
+  err: text;
+};
+
+type Result_Unit = variant {
+  ok;
+  err: text;
+};
+
+type Result_Wallet = variant {
+  ok: Wallet;
+  err: text;
+};
+
+type Result_Document = variant {
+  ok: Document;
   err: text;
 };
 
 service : {
-  // Authentication and user management
-  registerUser: (AuthMethod, text, text) -> (Result_User);
-  setUserRole: (UserRole) -> (Result_User);
+  // Enhanced user registration and profile management
+  registerUser: (AuthMethod, text, text, text, opt text, opt blob) -> (Result_User);
+  setUserRole: (UserRole, opt text, opt text, opt text, opt text) -> (Result_User);
   getCurrentUser: () -> (Result_User);
+  updateProfile: (text, text, text, opt text, opt text, opt text, opt text, opt text) -> (Result_User);
+  updateProfilePicture: (blob) -> (Result_User);
+  
+  // KYC and document management
   updateKYCStatus: (KYCStatus) -> (Result_User);
-  updateProfile: (text, text) -> (Result_User);
+  uploadKYCDocument: (text, text, blob, text) -> (Result_Text);
+  getUserDocuments: () -> (vec Document) query;
+  submitKYCForReview: () -> (Result_User);
+  getDocument: (text) -> (Result_Document);
+  deleteDocument: (text) -> (Result_Unit);
+  verifyDocument: (text, bool) -> (Result_Unit);
+  getAllDocuments: () -> (vec Document) query;
+  
+  // Integrated wallet functionality
+  getWallet: () -> (Result_Wallet);
+  getBalance: (TokenType) -> (Result_Nat);
+  transfer: (principal, nat, TokenType, opt text) -> (Result_Text);
+  addFunds: (nat, TokenType) -> (Result_Unit);
+  getTransactionHistory: () -> (vec Transaction);
+  getTransaction: (text) -> (opt Transaction) query;
+  setWalletLock: (principal, bool) -> (Result_Unit);
   
   // Session management
   validateSession: () -> (Result_User);
   userExists: () -> (bool);
+  getProfilePicture: () -> (opt blob);
   
   // Query functions
   getUsersByRole: (UserRole) -> (vec User) query;
@@ -75,5 +191,6 @@ service : {
   getTotalUsers: () -> (nat) query;
   getUserCountByRole: () -> (vec record { UserRole; nat }) query;
   getUserStats: () -> (UserStats) query;
+  getWalletStats: () -> (WalletStats) query;
   healthCheck: () -> (HealthCheck) query;
 }

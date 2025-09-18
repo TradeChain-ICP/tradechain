@@ -9,6 +9,9 @@ import Debug "mo:base/Debug";
 import Array "mo:base/Array";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
+import Blob "mo:base/Blob";
+import Option "mo:base/Option";
+import Int "mo:base/Int";
 
 import Types "./types";
 
@@ -19,32 +22,61 @@ persistent actor UserManagement {
     type UserRole = Types.UserRole;
     type KYCStatus = Types.KYCStatus;
     type AuthMethod = Types.AuthMethod;
+    type Wallet = Types.Wallet;
+    type TokenType = Types.TokenType;
+    type Transaction = Types.Transaction;
+    type TransactionType = Types.TransactionType;
+    type TransactionStatus = Types.TransactionStatus;
+    type Document = Types.Document;
     type Result<T, E> = Result.Result<T, E>;
     type UserId = Text;
 
-    // Stable storage for upgrades
-    private stable var userEntries : [(Principal, User)] = [];
-    private stable var userIdCounter : Nat = 0;
+    // Stable storage for upgrades (removed redundant stable keywords)
+    private var userEntries : [(Principal, User)] = [];
+    private var walletEntries : [(Principal, Wallet)] = [];
+    private var transactionEntries : [(Text, Transaction)] = [];
+    private var documentEntries : [(Text, Document)] = [];
+    private var userIdCounter : Nat = 0;
+    private var transactionIdCounter : Nat = 0;
 
-    // Runtime storage - explicitly marked as transient
+    // Runtime storage
     private transient var users = HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
+    private transient var wallets = HashMap.HashMap<Principal, Wallet>(10, Principal.equal, Principal.hash);
+    private transient var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
+    private transient var documents = HashMap.HashMap<Text, Document>(50, Text.equal, Text.hash);
     private transient var usersByRole = HashMap.HashMap<UserRole, [Principal]>(2, func(a: UserRole, b: UserRole) : Bool { a == b }, func(role: UserRole) : Nat32 {
         switch(role) {
             case (#buyer) 0;
             case (#seller) 1;
         }
     });
+    private transient var userTransactions = HashMap.HashMap<Principal, [Text]>(10, Principal.equal, Principal.hash);
 
-    // Initialize from stable storage
+    // Helper function to convert Int to Nat safely
+    private func intToNat(x: Int) : Nat {
+        Int.abs(x)
+    };
+
+    // System functions for upgrades
     system func preupgrade() {
         userEntries := Iter.toArray(users.entries());
+        walletEntries := Iter.toArray(wallets.entries());
+        transactionEntries := Iter.toArray(transactions.entries());
+        documentEntries := Iter.toArray(documents.entries());
     };
 
     system func postupgrade() {
         users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
-        userEntries := [];
+        wallets := HashMap.fromIter(walletEntries.vals(), walletEntries.size(), Principal.equal, Principal.hash);
+        transactions := HashMap.fromIter(transactionEntries.vals(), transactionEntries.size(), Text.equal, Text.hash);
+        documents := HashMap.fromIter(documentEntries.vals(), documentEntries.size(), Text.equal, Text.hash);
         
-        // Rebuild role indexes
+        userEntries := [];
+        walletEntries := [];
+        transactionEntries := [];
+        documentEntries := [];
+        
+        // Rebuild indexes
         for ((principal, user) in users.entries()) {
             switch(user.role) {
                 case (?role) {
@@ -57,10 +89,34 @@ persistent actor UserManagement {
                 case null {};
             };
         };
+
+        // Rebuild user transaction indexes
+        for ((txId, tx) in transactions.entries()) {
+            let userTxs = switch(userTransactions.get(tx.fromPrincipal)) {
+                case (?txs) Array.append(txs, [txId]);
+                case null [txId];
+            };
+            userTransactions.put(tx.fromPrincipal, userTxs);
+            
+            if (tx.fromPrincipal != tx.toPrincipal) {
+                let recipientTxs = switch(userTransactions.get(tx.toPrincipal)) {
+                    case (?txs) Array.append(txs, [txId]);
+                    case null [txId];
+                };
+                userTransactions.put(tx.toPrincipal, recipientTxs);
+            };
+        };
     };
 
-    // User registration with Internet Identity or NFID
-    public shared(msg) func registerUser(authMethod: AuthMethod, firstName: Text, lastName: Text) : async Result<User, Text> {
+    // Enhanced user registration with profile data
+    public shared(msg) func registerUser(
+        authMethod: AuthMethod, 
+        firstName: Text, 
+        lastName: Text,
+        email: Text,
+        phone: ?Text,
+        profilePicture: ?Blob
+    ) : async Result<User, Text> {
         let caller = msg.caller;
         
         // Check if user already exists
@@ -75,31 +131,47 @@ persistent actor UserManagement {
         userIdCounter += 1;
         let userId = "user_" # Nat.toText(userIdCounter);
 
-        // Create new user
+        // Create new user with enhanced profile
         let newUser : User = {
             id = userId;
             principalId = Principal.toText(caller);
             firstName = firstName;
             lastName = lastName;
-            role = null; // Role will be set separately
+            email = email;
+            phone = phone;
+            profilePicture = profilePicture;
+            role = null;
             authMethod = authMethod;
             kycStatus = #pending;
             kycSubmittedAt = null;
             verified = false;
-            walletAddress = Principal.toText(caller); // Using principal as wallet address for now
+            walletAddress = Principal.toText(caller);
+            bio = null;
+            location = null;
+            company = null;
+            website = null;
             joinedAt = Time.now();
             lastActive = Time.now();
         };
 
         // Store user
         users.put(caller, newUser);
+
+        // Create wallet automatically
+        let _ = await createWalletForUser(caller);
         
         Debug.print("User registered: " # userId);
         #ok(newUser)
     };
 
-    // Set user role after registration
-    public shared(msg) func setUserRole(role: UserRole) : async Result<User, Text> {
+    // Set user role and complete profile
+    public shared(msg) func setUserRole(
+        role: UserRole,
+        bio: ?Text,
+        location: ?Text,
+        company: ?Text,
+        website: ?Text
+    ) : async Result<User, Text> {
         let caller = msg.caller;
         
         switch(users.get(caller)) {
@@ -113,18 +185,25 @@ persistent actor UserManagement {
                         #err("User role already set to " # debug_show(existingRole))
                     };
                     case null {
-                        // Update user with role
+                        // Update user with role and profile
                         let updatedUser : User = {
                             id = user.id;
                             principalId = user.principalId;
                             firstName = user.firstName;
                             lastName = user.lastName;
+                            email = user.email;
+                            phone = user.phone;
+                            profilePicture = user.profilePicture;
                             role = ?role;
                             authMethod = user.authMethod;
                             kycStatus = user.kycStatus;
                             kycSubmittedAt = user.kycSubmittedAt;
                             verified = user.verified;
                             walletAddress = user.walletAddress;
+                            bio = bio;
+                            location = location;
+                            company = company;
+                            website = website;
                             joinedAt = user.joinedAt;
                             lastActive = Time.now();
                         };
@@ -138,12 +217,529 @@ persistent actor UserManagement {
                         };
                         usersByRole.put(role, Array.append(existing, [caller]));
                         
-                        Debug.print("Role set for user: " # user.id # " -> " # debug_show(role));
+                        Debug.print("Role and profile set for user: " # user.id # " -> " # debug_show(role));
                         #ok(updatedUser)
                     };
                 };
             };
         };
+    };
+
+    // Update profile picture
+    public shared(msg) func updateProfilePicture(profilePicture: Blob) : async Result<User, Text> {
+        let caller = msg.caller;
+        
+        switch(users.get(caller)) {
+            case null {
+                #err("User not found")
+            };
+            case (?user) {
+                let updatedUser : User = {
+                    id = user.id;
+                    principalId = user.principalId;
+                    firstName = user.firstName;
+                    lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = ?profilePicture;
+                    role = user.role;
+                    authMethod = user.authMethod;
+                    kycStatus = user.kycStatus;
+                    kycSubmittedAt = user.kycSubmittedAt;
+                    verified = user.verified;
+                    walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
+                    joinedAt = user.joinedAt;
+                    lastActive = Time.now();
+                };
+                
+                users.put(caller, updatedUser);
+                #ok(updatedUser)
+            };
+        };
+    };
+
+    // Upload KYC document
+    public shared(msg) func uploadKYCDocument(
+        docType: Text,
+        fileName: Text,
+        content: Blob,
+        mimeType: Text
+    ) : async Result<Text, Text> {
+        let caller = msg.caller;
+        
+        // Check if user exists
+        switch(users.get(caller)) {
+            case null return #err("User not found");
+            case (?_) {};
+        };
+
+        let docId = "doc_" # Nat.toText(userIdCounter) # "_" # Nat.toText(intToNat(Time.now()));
+        
+        let document : Document = {
+            id = docId;
+            userId = Principal.toText(caller);
+            docType = docType;
+            fileName = fileName;
+            content = content;
+            mimeType = mimeType;
+            uploadedAt = Time.now();
+            verified = false;
+        };
+
+        documents.put(docId, document);
+        Debug.print("Document uploaded: " # docId);
+        
+        #ok(docId)
+    };
+
+    // Get user's KYC documents
+    public shared(msg) func getUserDocuments() : async [Document] {
+        let caller = msg.caller;
+        let userId = Principal.toText(caller);
+        
+        let userDocs = Array.filter<Document>(
+            Iter.toArray(documents.vals()),
+            func(doc) = doc.userId == userId
+        );
+        
+        userDocs
+    };
+
+    // Submit KYC for review
+    public shared(msg) func submitKYCForReview() : async Result<User, Text> {
+        let caller = msg.caller;
+        
+        switch(users.get(caller)) {
+            case null {
+                #err("User not found")
+            };
+            case (?user) {
+                // Check if user has uploaded required documents
+                let userDocs = await getUserDocuments();
+                if (userDocs.size() < 3) {
+                    return #err("Please upload all required documents before submitting KYC");
+                };
+
+                let updatedUser : User = {
+                    id = user.id;
+                    principalId = user.principalId;
+                    firstName = user.firstName;
+                    lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = user.profilePicture;
+                    role = user.role;
+                    authMethod = user.authMethod;
+                    kycStatus = #inReview;
+                    kycSubmittedAt = ?Time.now();
+                    verified = false;
+                    walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
+                    joinedAt = user.joinedAt;
+                    lastActive = Time.now();
+                };
+
+                users.put(caller, updatedUser);
+                Debug.print("KYC submitted for review: " # user.id);
+                #ok(updatedUser)
+            };
+        };
+    };
+
+    // WALLET FUNCTIONALITY INTEGRATION
+
+    // Create wallet for user (internal function)
+    private func createWalletForUser(userPrincipal: Principal) : async Result<Wallet, Text> {
+        // Check if wallet already exists
+        switch(wallets.get(userPrincipal)) {
+            case (?existingWallet) {
+                return #ok(existingWallet);
+            };
+            case null {};
+        };
+
+        // Create new wallet
+        let newWallet : Wallet = {
+            owner = userPrincipal;
+            icpBalance = 0;
+            usdBalance = 0;
+            nairaBalance = 0;
+            euroBalance = 0;
+            createdAt = Time.now();
+            lastTransactionAt = Time.now();
+            isLocked = false;
+            totalTransactions = 0;
+        };
+
+        wallets.put(userPrincipal, newWallet);
+        
+        Debug.print("Wallet created for: " # Principal.toText(userPrincipal));
+        #ok(newWallet)
+    };
+
+    // Get user's wallet
+    public shared(msg) func getWallet() : async Result<Wallet, Text> {
+        let caller = msg.caller;
+        
+        switch(wallets.get(caller)) {
+            case null {
+                // Create wallet if it doesn't exist
+                await createWalletForUser(caller)
+            };
+            case (?wallet) {
+                #ok(wallet)
+            };
+        };
+    };
+
+    // Get wallet balance for specific token
+    public shared(msg) func getBalance(tokenType: TokenType) : async Result<Nat, Text> {
+        let caller = msg.caller;
+        
+        switch(wallets.get(caller)) {
+            case null {
+                #err("Wallet not found")
+            };
+            case (?wallet) {
+                let balance = switch(tokenType) {
+                    case (#ICP) wallet.icpBalance;
+                    case (#USD) wallet.usdBalance;
+                    case (#Naira) wallet.nairaBalance;
+                    case (#Euro) wallet.euroBalance;
+                };
+                #ok(balance)
+            };
+        };
+    };
+
+    // Safe subtraction function
+    private func safeSub(a: Nat, b: Nat) : ?Nat {
+        if (a >= b) {
+            ?(a - b)
+        } else {
+            null
+        }
+    };
+
+    // Transfer funds between wallets
+    public shared(msg) func transfer(
+        to: Principal, 
+        amount: Nat, 
+        tokenType: TokenType,
+        memo: ?Text
+    ) : async Result<Text, Text> {
+        let caller = msg.caller;
+        
+        // Validate amount
+        if (amount == 0) {
+            return #err("Transfer amount must be greater than 0");
+        };
+
+        // Get sender wallet
+        let senderWallet = switch(wallets.get(caller)) {
+            case null return #err("Sender wallet not found");
+            case (?wallet) wallet;
+        };
+
+        // Check if wallet is locked
+        if (senderWallet.isLocked) {
+            return #err("Wallet is locked");
+        };
+
+        // Check balance and calculate new balance safely
+        let (currentBalance, newSenderBalance) = switch(tokenType) {
+            case (#ICP) {
+                let balance = senderWallet.icpBalance;
+                switch(safeSub(balance, amount)) {
+                    case (?newBalance) (balance, newBalance);
+                    case null return #err("Insufficient balance");
+                };
+            };
+            case (#USD) {
+                let balance = senderWallet.usdBalance;
+                switch(safeSub(balance, amount)) {
+                    case (?newBalance) (balance, newBalance);
+                    case null return #err("Insufficient balance");
+                };
+            };
+            case (#Naira) {
+                let balance = senderWallet.nairaBalance;
+                switch(safeSub(balance, amount)) {
+                    case (?newBalance) (balance, newBalance);
+                    case null return #err("Insufficient balance");
+                };
+            };
+            case (#Euro) {
+                let balance = senderWallet.euroBalance;
+                switch(safeSub(balance, amount)) {
+                    case (?newBalance) (balance, newBalance);
+                    case null return #err("Insufficient balance");
+                };
+            };
+        };
+
+        // Get or create recipient wallet
+        let recipientWallet = switch(wallets.get(to)) {
+            case (?wallet) wallet;
+            case null {
+                // Create wallet for recipient
+                let newWallet : Wallet = {
+                    owner = to;
+                    icpBalance = 0;
+                    usdBalance = 0;
+                    nairaBalance = 0;
+                    euroBalance = 0;
+                    createdAt = Time.now();
+                    lastTransactionAt = Time.now();
+                    isLocked = false;
+                    totalTransactions = 0;
+                };
+                wallets.put(to, newWallet);
+                newWallet;
+            };
+        };
+
+        // Generate transaction ID
+        transactionIdCounter += 1;
+        let txId = "tx_" # Nat.toText(transactionIdCounter);
+
+        // Update sender balance
+        let updatedSenderWallet = switch(tokenType) {
+            case (#ICP) {
+                {
+                    owner = senderWallet.owner;
+                    icpBalance = newSenderBalance;
+                    usdBalance = senderWallet.usdBalance;
+                    nairaBalance = senderWallet.nairaBalance;
+                    euroBalance = senderWallet.euroBalance;
+                    createdAt = senderWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = senderWallet.isLocked;
+                    totalTransactions = senderWallet.totalTransactions + 1;
+                }
+            };
+            case (#USD) {
+                {
+                    owner = senderWallet.owner;
+                    icpBalance = senderWallet.icpBalance;
+                    usdBalance = newSenderBalance;
+                    nairaBalance = senderWallet.nairaBalance;
+                    euroBalance = senderWallet.euroBalance;
+                    createdAt = senderWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = senderWallet.isLocked;
+                    totalTransactions = senderWallet.totalTransactions + 1;
+                }
+            };
+            case (#Naira) {
+                {
+                    owner = senderWallet.owner;
+                    icpBalance = senderWallet.icpBalance;
+                    usdBalance = senderWallet.usdBalance;
+                    nairaBalance = newSenderBalance;
+                    euroBalance = senderWallet.euroBalance;
+                    createdAt = senderWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = senderWallet.isLocked;
+                    totalTransactions = senderWallet.totalTransactions + 1;
+                }
+            };
+            case (#Euro) {
+                {
+                    owner = senderWallet.owner;
+                    icpBalance = senderWallet.icpBalance;
+                    usdBalance = senderWallet.usdBalance;
+                    nairaBalance = senderWallet.nairaBalance;
+                    euroBalance = newSenderBalance;
+                    createdAt = senderWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = senderWallet.isLocked;
+                    totalTransactions = senderWallet.totalTransactions + 1;
+                }
+            };
+        };
+
+        // Update recipient balance
+        let updatedRecipientWallet = switch(tokenType) {
+            case (#ICP) {
+                {
+                    owner = recipientWallet.owner;
+                    icpBalance = recipientWallet.icpBalance + amount;
+                    usdBalance = recipientWallet.usdBalance;
+                    nairaBalance = recipientWallet.nairaBalance;
+                    euroBalance = recipientWallet.euroBalance;
+                    createdAt = recipientWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = recipientWallet.isLocked;
+                    totalTransactions = recipientWallet.totalTransactions + 1;
+                }
+            };
+            case (#USD) {
+                {
+                    owner = recipientWallet.owner;
+                    icpBalance = recipientWallet.icpBalance;
+                    usdBalance = recipientWallet.usdBalance + amount;
+                    nairaBalance = recipientWallet.nairaBalance;
+                    euroBalance = recipientWallet.euroBalance;
+                    createdAt = recipientWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = recipientWallet.isLocked;
+                    totalTransactions = recipientWallet.totalTransactions + 1;
+                }
+            };
+            case (#Naira) {
+                {
+                    owner = recipientWallet.owner;
+                    icpBalance = recipientWallet.icpBalance;
+                    usdBalance = recipientWallet.usdBalance;
+                    nairaBalance = recipientWallet.nairaBalance + amount;
+                    euroBalance = recipientWallet.euroBalance;
+                    createdAt = recipientWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = recipientWallet.isLocked;
+                    totalTransactions = recipientWallet.totalTransactions + 1;
+                }
+            };
+            case (#Euro) {
+                {
+                    owner = recipientWallet.owner;
+                    icpBalance = recipientWallet.icpBalance;
+                    usdBalance = recipientWallet.usdBalance;
+                    nairaBalance = recipientWallet.nairaBalance;
+                    euroBalance = recipientWallet.euroBalance + amount;
+                    createdAt = recipientWallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = recipientWallet.isLocked;
+                    totalTransactions = recipientWallet.totalTransactions + 1;
+                }
+            };
+        };
+
+        // Create transaction record
+        let transaction : Transaction = {
+            id = txId;
+            fromPrincipal = caller;
+            toPrincipal = to;
+            amount = amount;
+            tokenType = tokenType;
+            transactionType = #transfer;
+            status = #completed;
+            createdAt = Time.now();
+            completedAt = ?Time.now();
+            memo = memo;
+        };
+
+        // Save updated wallets and transaction
+        wallets.put(caller, updatedSenderWallet);
+        wallets.put(to, updatedRecipientWallet);
+        transactions.put(txId, transaction);
+
+        // Update user transaction indexes
+        let senderTxs = switch(userTransactions.get(caller)) {
+            case (?txs) Array.append(txs, [txId]);
+            case null [txId];
+        };
+        userTransactions.put(caller, senderTxs);
+
+        let recipientTxs = switch(userTransactions.get(to)) {
+            case (?txs) Array.append(txs, [txId]);
+            case null [txId];
+        };
+        userTransactions.put(to, recipientTxs);
+
+        Debug.print("Transfer completed: " # txId);
+        #ok(txId)
+    };
+
+    // Add funds to wallet (for testing/demo purposes)
+    public shared(msg) func addFunds(amount: Nat, tokenType: TokenType) : async Result<(), Text> {
+        let caller = msg.caller;
+        
+        // Get wallet
+        let wallet = switch(wallets.get(caller)) {
+            case null return #err("Wallet not found");
+            case (?w) w;
+        };
+
+        // Update balance
+        let updatedWallet = switch(tokenType) {
+            case (#ICP) {
+                {
+                    owner = wallet.owner;
+                    icpBalance = wallet.icpBalance + amount;
+                    usdBalance = wallet.usdBalance;
+                    nairaBalance = wallet.nairaBalance;
+                    euroBalance = wallet.euroBalance;
+                    createdAt = wallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = wallet.isLocked;
+                    totalTransactions = wallet.totalTransactions;
+                }
+            };
+            case (#USD) {
+                {
+                    owner = wallet.owner;
+                    icpBalance = wallet.icpBalance;
+                    usdBalance = wallet.usdBalance + amount;
+                    nairaBalance = wallet.nairaBalance;
+                    euroBalance = wallet.euroBalance;
+                    createdAt = wallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = wallet.isLocked;
+                    totalTransactions = wallet.totalTransactions;
+                }
+            };
+            case (#Naira) {
+                {
+                    owner = wallet.owner;
+                    icpBalance = wallet.icpBalance;
+                    usdBalance = wallet.usdBalance;
+                    nairaBalance = wallet.nairaBalance + amount;
+                    euroBalance = wallet.euroBalance;
+                    createdAt = wallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = wallet.isLocked;
+                    totalTransactions = wallet.totalTransactions;
+                }
+            };
+            case (#Euro) {
+                {
+                    owner = wallet.owner;
+                    icpBalance = wallet.icpBalance;
+                    usdBalance = wallet.usdBalance;
+                    nairaBalance = wallet.nairaBalance;
+                    euroBalance = wallet.euroBalance + amount;
+                    createdAt = wallet.createdAt;
+                    lastTransactionAt = Time.now();
+                    isLocked = wallet.isLocked;
+                    totalTransactions = wallet.totalTransactions;
+                }
+            };
+        };
+
+        wallets.put(caller, updatedWallet);
+        #ok(())
+    };
+
+    // Get transaction history for user
+    public shared(msg) func getTransactionHistory() : async [Transaction] {
+        let caller = msg.caller;
+        
+        let userTxIds = switch(userTransactions.get(caller)) {
+            case (?txIds) txIds;
+            case null [];
+        };
+
+        Array.mapFilter<Text, Transaction>(userTxIds, func(txId) {
+            transactions.get(txId)
+        })
     };
 
     // Get current user profile
@@ -161,12 +757,19 @@ persistent actor UserManagement {
                     principalId = user.principalId;
                     firstName = user.firstName;
                     lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = user.profilePicture;
                     role = user.role;
                     authMethod = user.authMethod;
                     kycStatus = user.kycStatus;
                     kycSubmittedAt = user.kycSubmittedAt;
                     verified = user.verified;
                     walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
                     joinedAt = user.joinedAt;
                     lastActive = Time.now();
                 };
@@ -197,12 +800,19 @@ persistent actor UserManagement {
                     principalId = user.principalId;
                     firstName = user.firstName;
                     lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = user.profilePicture;
                     role = user.role;
                     authMethod = user.authMethod;
                     kycStatus = status;
                     kycSubmittedAt = kycSubmittedTime;
                     verified = (status == #completed);
                     walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
                     joinedAt = user.joinedAt;
                     lastActive = Time.now();
                 };
@@ -215,7 +825,16 @@ persistent actor UserManagement {
     };
 
     // Update user profile
-    public shared(msg) func updateProfile(firstName: Text, lastName: Text) : async Result<User, Text> {
+    public shared(msg) func updateProfile(
+        firstName: Text, 
+        lastName: Text,
+        email: Text,
+        phone: ?Text,
+        bio: ?Text,
+        location: ?Text,
+        company: ?Text,
+        website: ?Text
+    ) : async Result<User, Text> {
         let caller = msg.caller;
         
         switch(users.get(caller)) {
@@ -228,12 +847,19 @@ persistent actor UserManagement {
                     principalId = user.principalId;
                     firstName = firstName;
                     lastName = lastName;
+                    email = email;
+                    phone = phone;
+                    profilePicture = user.profilePicture;
                     role = user.role;
                     authMethod = user.authMethod;
                     kycStatus = user.kycStatus;
                     kycSubmittedAt = user.kycSubmittedAt;
                     verified = user.verified;
                     walletAddress = user.walletAddress;
+                    bio = bio;
+                    location = location;
+                    company = company;
+                    website = website;
                     joinedAt = user.joinedAt;
                     lastActive = Time.now();
                 };
@@ -281,16 +907,40 @@ persistent actor UserManagement {
         [(#buyer, buyers), (#seller, sellers)]
     };
 
+    // Get wallet statistics
+    public query func getWalletStats() : async {
+        totalWallets: Nat;
+        totalTransactions: Nat;
+        totalIcpLocked: Nat;
+        totalUsdLocked: Nat;
+    } {
+        var totalIcp = 0;
+        var totalUsd = 0;
+        
+        for ((_, wallet) in wallets.entries()) {
+            totalIcp += wallet.icpBalance;
+            totalUsd += wallet.usdBalance;
+        };
+
+        {
+            totalWallets = wallets.size();
+            totalTransactions = transactions.size();
+            totalIcpLocked = totalIcp;
+            totalUsdLocked = totalUsd;
+        }
+    };
+
     // Health check
-    public query func healthCheck() : async {status: Text; timestamp: Int; userCount: Nat} {
+    public query func healthCheck() : async {status: Text; timestamp: Int; userCount: Nat; walletCount: Nat} {
         {
             status = "healthy";
             timestamp = Time.now();
             userCount = users.size();
+            walletCount = wallets.size();
         }
     };
 
-    // Validate user session - Fixed to return the correct type
+    // Validate user session
     public shared(msg) func validateSession() : async Result<User, Text> {
         await getCurrentUser()
     };
@@ -311,6 +961,8 @@ persistent actor UserManagement {
         kycInReview: Nat;
         kycCompleted: Nat;
         kycRejected: Nat;
+        totalWallets: Nat;
+        totalTransactions: Nat;
     } {
         var verifiedCount = 0;
         var kycPendingCount = 0;
@@ -338,6 +990,120 @@ persistent actor UserManagement {
             kycInReview = kycInReviewCount;
             kycCompleted = kycCompletedCount;
             kycRejected = kycRejectedCount;
+            totalWallets = wallets.size();
+            totalTransactions = transactions.size();
         }
+    };
+
+    // Get specific transaction
+    public query func getTransaction(txId: Text) : async ?Transaction {
+        transactions.get(txId)
+    };
+
+    // Lock/unlock wallet (admin function)
+    public shared(msg) func setWalletLock(owner: Principal, isLocked: Bool) : async Result<(), Text> {
+        // In a real implementation, you'd check admin permissions here
+        
+        switch(wallets.get(owner)) {
+            case null {
+                #err("Wallet not found")
+            };
+            case (?wallet) {
+                let updatedWallet = {
+                    owner = wallet.owner;
+                    icpBalance = wallet.icpBalance;
+                    usdBalance = wallet.usdBalance;
+                    nairaBalance = wallet.nairaBalance;
+                    euroBalance = wallet.euroBalance;
+                    createdAt = wallet.createdAt;
+                    lastTransactionAt = wallet.lastTransactionAt;
+                    isLocked = isLocked;
+                    totalTransactions = wallet.totalTransactions;
+                };
+                
+                wallets.put(owner, updatedWallet);
+                #ok(())
+            };
+        };
+    };
+
+    // Get user's profile picture
+    public shared(msg) func getProfilePicture() : async ?Blob {
+        let caller = msg.caller;
+        
+        switch(users.get(caller)) {
+            case null null;
+            case (?user) user.profilePicture;
+        };
+    };
+
+    // Verify document (admin function)
+    public shared(msg) func verifyDocument(docId: Text, verified: Bool) : async Result<(), Text> {
+        // In a real implementation, you'd check admin permissions here
+        
+        switch(documents.get(docId)) {
+            case null {
+                #err("Document not found")
+            };
+            case (?doc) {
+                let updatedDoc : Document = {
+                    id = doc.id;
+                    userId = doc.userId;
+                    docType = doc.docType;
+                    fileName = doc.fileName;
+                    content = doc.content;
+                    mimeType = doc.mimeType;
+                    uploadedAt = doc.uploadedAt;
+                    verified = verified;
+                };
+                
+                documents.put(docId, updatedDoc);
+                #ok(())
+            };
+        };
+    };
+
+    // Get all documents (admin function)
+    public query func getAllDocuments() : async [Document] {
+        Iter.toArray(documents.vals())
+    };
+
+    // Delete document
+    public shared(msg) func deleteDocument(docId: Text) : async Result<(), Text> {
+        let caller = msg.caller;
+        let userId = Principal.toText(caller);
+        
+        switch(documents.get(docId)) {
+            case null {
+                #err("Document not found")
+            };
+            case (?doc) {
+                if (doc.userId != userId) {
+                    return #err("Unauthorized to delete this document");
+                };
+                
+                documents.delete(docId);
+                #ok(())
+            };
+        };
+    };
+
+    // Get document by ID (for authorized users only)
+    public shared(msg) func getDocument(docId: Text) : async Result<Document, Text> {
+        let caller = msg.caller;
+        let userId = Principal.toText(caller);
+        
+        switch(documents.get(docId)) {
+            case null {
+                #err("Document not found")
+            };
+            case (?doc) {
+                if (doc.userId != userId) {
+                    return #err("Unauthorized to access this document");
+                };
+                
+                #ok(doc)
+            };
+        };
     };
 }

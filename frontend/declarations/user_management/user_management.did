@@ -1,3 +1,15 @@
+type Wallet = 
+ record {
+   createdAt: int;
+   euroBalance: nat;
+   icpBalance: nat;
+   isLocked: bool;
+   lastTransactionAt: int;
+   nairaBalance: nat;
+   owner: principal;
+   totalTransactions: nat;
+   usdBalance: nat;
+ };
 type UserRole = 
  variant {
    buyer;
@@ -6,6 +18,9 @@ type UserRole =
 type User = 
  record {
    authMethod: AuthMethod;
+   bio: opt text;
+   company: opt text;
+   email: text;
    firstName: text;
    id: text;
    joinedAt: int;
@@ -13,15 +28,80 @@ type User =
    kycSubmittedAt: opt int;
    lastActive: int;
    lastName: text;
+   location: opt text;
+   phone: opt text;
    principalId: text;
+   profilePicture: opt blob;
    role: opt UserRole;
    verified: bool;
    walletAddress: text;
+   website: opt text;
+ };
+type TransactionType = 
+ variant {
+   deposit;
+   escrow;
+   payment;
+   refund;
+   transfer;
+   withdrawal;
+ };
+type TransactionStatus = 
+ variant {
+   cancelled;
+   completed;
+   failed;
+   pending;
+ };
+type Transaction = 
+ record {
+   amount: nat;
+   completedAt: opt int;
+   createdAt: int;
+   fromPrincipal: principal;
+   id: text;
+   memo: opt text;
+   status: TransactionStatus;
+   toPrincipal: principal;
+   tokenType: TokenType;
+   transactionType: TransactionType;
+ };
+type TokenType = 
+ variant {
+   Euro;
+   ICP;
+   Naira;
+   USD;
+ };
+type Result_5 = 
+ variant {
+   err: text;
+   ok: nat;
+ };
+type Result_4 = 
+ variant {
+   err: text;
+   ok: Document;
+ };
+type Result_3 = 
+ variant {
+   err: text;
+   ok: Wallet;
+ };
+type Result_2 = 
+ variant {
+   err: text;
+   ok: text;
+ };
+type Result_1 = 
+ variant {
+   err: text;
+   ok: User;
  };
 type Result = 
  variant {
    err: text;
-   ok: User;
+   ok;
  };
 type KYCStatus = 
  variant {
@@ -30,40 +110,82 @@ type KYCStatus =
    pending;
    rejected;
  };
+type Document = 
+ record {
+   content: blob;
+   docType: text;
+   fileName: text;
+   id: text;
+   mimeType: text;
+   uploadedAt: int;
+   userId: text;
+   verified: bool;
+ };
 type AuthMethod = 
  variant {
    internetIdentity;
    nfid;
  };
 service : {
-  getCurrentUser: () -> (Result);
+  addFunds: (amount: nat, tokenType: TokenType) -> (Result);
+  deleteDocument: (docId: text) -> (Result);
+  getAllDocuments: () -> (vec Document) query;
+  getBalance: (tokenType: TokenType) -> (Result_5);
+  getCurrentUser: () -> (Result_1);
+  getDocument: (docId: text) -> (Result_4);
+  getProfilePicture: () -> (opt blob);
   getTotalUsers: () -> (nat) query;
+  getTransaction: (txId: text) -> (opt Transaction) query;
+  getTransactionHistory: () -> (vec Transaction);
   getUserByPrincipal: ("principal": principal) -> (opt User) query;
   getUserCountByRole: () -> (vec record {
                                    UserRole;
                                    nat;
                                  }) query;
+  getUserDocuments: () -> (vec Document);
   getUserStats: () ->
    (record {
       kycCompleted: nat;
       kycInReview: nat;
       kycPending: nat;
       kycRejected: nat;
+      totalTransactions: nat;
       totalUsers: nat;
+      totalWallets: nat;
       verifiedUsers: nat;
     }) query;
   getUsersByRole: (role: UserRole) -> (vec User) query;
+  getWallet: () -> (Result_3);
+  getWalletStats: () ->
+   (record {
+      totalIcpLocked: nat;
+      totalTransactions: nat;
+      totalUsdLocked: nat;
+      totalWallets: nat;
+    }) query;
   healthCheck: () ->
    (record {
       status: text;
       timestamp: int;
       userCount: nat;
+      walletCount: nat;
     }) query;
-  registerUser: (authMethod: AuthMethod, firstName: text, lastName: text) ->
-   (Result);
-  setUserRole: (role: UserRole) -> (Result);
-  updateKYCStatus: (status: KYCStatus) -> (Result);
-  updateProfile: (firstName: text, lastName: text) -> (Result);
+  registerUser: (authMethod: AuthMethod, firstName: text, lastName: text,
+   email: text, phone: opt text, profilePicture: opt blob) -> (Result_1);
+  setUserRole: (role: UserRole, bio: opt text, location: opt text, company:
+   opt text, website: opt text) -> (Result_1);
+  setWalletLock: (owner: principal, isLocked: bool) -> (Result);
+  submitKYCForReview: () -> (Result_1);
+  transfer: (to: principal, amount: nat, tokenType: TokenType, memo:
+   opt text) -> (Result_2);
+  updateKYCStatus: (status: KYCStatus) -> (Result_1);
+  updateProfile: (firstName: text, lastName: text, email: text, phone:
+   opt text, bio: opt text, location: opt text, company: opt text, website:
+   opt text) -> (Result_1);
+  updateProfilePicture: (profilePicture: blob) -> (Result_1);
+  uploadKYCDocument: (docType: text, fileName: text, content: blob, mimeType:
+   text) -> (Result_2);
   userExists: () -> (bool);
-  validateSession: () -> (Result);
+  validateSession: () -> (Result_1);
+  verifyDocument: (docId: text, verified: bool) -> (Result);
 }

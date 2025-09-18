@@ -15,7 +15,10 @@ interface User {
   principalId: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  email: string;
+  phone?: string;
+  profilePicture?: ArrayBuffer;
+  role?: UserRole;
   verified: boolean;
   walletAddress: string;
   authMethod: AuthMethod;
@@ -23,32 +26,69 @@ interface User {
   kycStatus: KYCStatus;
   kycSubmittedAt?: Date;
   lastActive: Date;
-  // Extended profile fields
-  email?: string;
-  phone?: string;
   bio?: string;
   location?: string;
   company?: string;
   website?: string;
 }
 
+interface Wallet {
+  owner: string;
+  icpBalance: number;
+  usdBalance: number;
+  nairaBalance: number;
+  euroBalance: number;
+  createdAt: Date;
+  lastTransactionAt: Date;
+  isLocked: boolean;
+  totalTransactions: number;
+}
+
 interface AuthContextType {
   user: User | null;
+  wallet: Wallet | null;
   connectWallet: (method: AuthMethod) => Promise<void>;
-  setUserRole: (role: UserRole) => Promise<void>;
+  registerUser: (data: {
+    authMethod: AuthMethod;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    profilePicture?: File;
+  }) => Promise<void>;
+  setUserRole: (data: {
+    role: UserRole;
+    bio?: string;
+    location?: string;
+    company?: string;
+    website?: string;
+  }) => Promise<void>;
   updateKYCStatus: (status: KYCStatus) => Promise<void>;
   updateProfile: (profileData: Partial<User>) => Promise<void>;
+  updateProfilePicture: (file: File) => Promise<void>;
+  uploadKYCDocument: (data: { docType: string; fileName: string; file: File }) => Promise<string>;
+  submitKYCForReview: () => Promise<void>;
+  getUserDocuments: () => Promise<any[]>;
+  getWallet: () => Promise<void>;
+  addFunds: (amount: number, tokenType: 'ICP' | 'USD' | 'Naira' | 'Euro') => Promise<void>;
+  transfer: (data: {
+    to: string;
+    amount: number;
+    tokenType: 'ICP' | 'USD' | 'Naira' | 'Euro';
+    memo?: string;
+  }) => Promise<string>;
+  getTransactionHistory: () => Promise<any[]>;
   disconnect: () => void;
   isLoading: boolean;
   isConnected: boolean;
   refreshUser: () => Promise<void>;
-  initializeWallet: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const navigationInProgress = useRef(false);
@@ -77,25 +117,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Helper function to extract role from Motoko variant
-  const extractRoleFromBackend = (backendRole: any): UserRole => {
+  const extractRoleFromBackend = (backendRole: any): UserRole | undefined => {
     if (!backendRole || backendRole.length === 0) {
-      return 'buyer'; // default
+      return undefined;
     }
 
     const roleVariant = backendRole[0];
     console.log('🔍 Backend role variant:', roleVariant);
 
-    // Handle different possible formats
     if (typeof roleVariant === 'string') {
       return roleVariant as UserRole;
     }
 
     if (typeof roleVariant === 'object' && roleVariant !== null) {
-      // Check for variant format like { buyer: null } or { seller: null }
       if ('buyer' in roleVariant) return 'buyer';
       if ('seller' in roleVariant) return 'seller';
 
-      // Check for key-based format
       const keys = Object.keys(roleVariant);
       if (keys.length > 0) {
         const key = keys[0];
@@ -105,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    return 'buyer'; // fallback
+    return undefined;
   };
 
   const refreshUserFromBackend = async () => {
@@ -116,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!userManagementActor) {
         console.log('⚠️ No user management actor available, waiting...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        return await refreshUserFromBackend(); // Retry
+        return await refreshUserFromBackend();
       }
 
       console.log('📞 Calling getCurrentUser...');
@@ -126,7 +163,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const backendUser = result.ok;
         console.log('✅ User data received from backend:', backendUser);
 
-        // Extract role properly
         const userRole = extractRoleFromBackend(backendUser.role);
         console.log('✅ Extracted role:', userRole);
 
@@ -135,6 +171,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           principalId: backendUser.principalId,
           firstName: backendUser.firstName,
           lastName: backendUser.lastName,
+          email: backendUser.email,
+          phone: backendUser.phone?.[0],
+          profilePicture: backendUser.profilePicture?.[0],
           role: userRole,
           verified: backendUser.verified,
           walletAddress: backendUser.walletAddress,
@@ -145,70 +184,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? new Date(Number(backendUser.kycSubmittedAt[0]) / 1000000)
             : undefined,
           lastActive: new Date(Number(backendUser.lastActive) / 1000000),
+          bio: backendUser.bio?.[0],
+          location: backendUser.location?.[0],
+          company: backendUser.company?.[0],
+          website: backendUser.website?.[0],
         };
 
         setUser(frontendUser);
         console.log('✅ User state updated:', frontendUser);
 
-        // Initialize wallet if user exists
-        await initializeUserWallet();
+        // Get wallet data
+        await refreshWalletFromBackend();
       } else if ('err' in result) {
         console.log('⚠️ User not found in backend:', result.err);
         setUser(null);
       }
     } catch (error: unknown) {
       console.error('❌ Failed to refresh user from backend:', error);
-
-      // Check if this is a development signature error
-      const errorMessage = (error as Error).message;
-      if (
-        errorMessage?.includes('Invalid delegation') ||
-        errorMessage?.includes('signature could not be verified') ||
-        errorMessage?.includes('Invalid request expiry')
-      ) {
-        console.log('🎭 Development signature error, creating mock user for demo');
-
-        const mockUser: User = {
-          id: `dev_user_${Date.now()}`,
-          principalId: IcpAgent.getPrincipal()?.toText() || 'dev_principal',
-          firstName: 'Demo',
-          lastName: 'User',
-          role: 'seller',
-          verified: false,
-          walletAddress: 'demo_wallet_address',
-          authMethod: 'internet-identity',
-          joinedAt: new Date(),
-          kycStatus: 'pending',
-          lastActive: new Date(),
-        };
-
-        setUser(mockUser);
-      } else {
-        setUser(null);
-      }
+      setUser(null);
     }
   };
 
-  const initializeUserWallet = async () => {
+  const refreshWalletFromBackend = async () => {
     try {
-      const walletActor = IcpAgent.getWalletActor();
-      if (walletActor) {
-        console.log('💰 Initializing user wallet...');
-        const walletResult = await walletActor.getWallet();
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) return;
 
-        if ('err' in walletResult) {
-          // Create wallet if it doesn't exist
-          console.log('💰 Creating new wallet...');
-          const createResult = await walletActor.createWallet();
-          if ('ok' in createResult) {
-            console.log('✅ Wallet created successfully');
-          }
-        } else {
-          console.log('✅ Wallet already exists');
-        }
+      const walletResult = await userManagementActor.getWallet();
+
+      if ('ok' in walletResult) {
+        const backendWallet = walletResult.ok;
+        const frontendWallet: Wallet = {
+          owner: backendWallet.owner.toText(),
+          icpBalance: Number(backendWallet.icpBalance),
+          usdBalance: Number(backendWallet.usdBalance),
+          nairaBalance: Number(backendWallet.nairaBalance),
+          euroBalance: Number(backendWallet.euroBalance),
+          createdAt: new Date(Number(backendWallet.createdAt) / 1000000),
+          lastTransactionAt: new Date(Number(backendWallet.lastTransactionAt) / 1000000),
+          isLocked: backendWallet.isLocked,
+          totalTransactions: Number(backendWallet.totalTransactions),
+        };
+        setWallet(frontendWallet);
       }
     } catch (error) {
-      console.log('⚠️ Wallet initialization failed (expected in development):', error);
+      console.error('❌ Failed to refresh wallet:', error);
     }
   };
 
@@ -218,7 +238,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Validate role is a proper string
     if (typeof role !== 'string' || (role !== 'buyer' && role !== 'seller')) {
       console.error('❌ Invalid role for navigation:', role);
       router.push('/role-selection');
@@ -231,7 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     router.push(dashboardPath);
 
-    // Reset navigation flag after a short delay
     setTimeout(() => {
       navigationInProgress.current = false;
     }, 2000);
@@ -272,11 +290,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('👤 Existing user found, loading data...');
           await refreshUserFromBackend();
 
-          // Check current user state after refresh
           const currentUser = await userManagementActor.getCurrentUser();
           if ('ok' in currentUser && currentUser.ok.role && currentUser.ok.role.length > 0) {
             const userRole = extractRoleFromBackend(currentUser.ok.role);
-            navigateToUserDashboard(userRole);
+            if (userRole) {
+              navigateToUserDashboard(userRole);
+            } else {
+              router.push('/role-selection');
+            }
           } else {
             router.push('/role-selection');
           }
@@ -296,7 +317,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleSetUserRole = async (role: UserRole) => {
+  const handleRegisterUser = async (data: {
+    authMethod: AuthMethod;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    profilePicture?: File;
+  }) => {
+    setIsLoading(true);
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      let profilePictureBlob: ArrayBuffer | null = null;
+      if (data.profilePicture) {
+        profilePictureBlob = await data.profilePicture.arrayBuffer();
+      }
+
+      const authMethod = { [data.authMethod]: null };
+      const result = await userManagementActor.registerUser(
+        authMethod,
+        data.firstName,
+        data.lastName,
+        data.email,
+        data.phone ? [data.phone] : [],
+        profilePictureBlob ? [new Uint8Array(profilePictureBlob)] : []
+      );
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      await refreshUserFromBackend();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetUserRole = async (data: {
+    role: UserRole;
+    bio?: string;
+    location?: string;
+    company?: string;
+    website?: string;
+  }) => {
     if (navigationInProgress.current) {
       console.log('🚫 Navigation in progress, ignoring role setting');
       return;
@@ -304,62 +371,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      console.log('👤 Setting user role:', role);
+      console.log('👤 Setting user role:', data.role);
       const userManagementActor = IcpAgent.getUserManagementActor();
 
       if (!userManagementActor) {
         throw new Error('User management actor not available');
       }
 
-      try {
-        // Check if user exists, if not register them first
-        const userExists = await userManagementActor.userExists();
+      const roleVariant = { [data.role]: null };
+      const result = await userManagementActor.setUserRole(
+        roleVariant,
+        data.bio ? [data.bio] : [],
+        data.location ? [data.location] : [],
+        data.company ? [data.company] : [],
+        data.website ? [data.website] : []
+      );
 
-        if (!userExists) {
-          console.log('📝 Registering new user first...');
-          const authMethod = { internetIdentity: null };
-          const registerResult = await userManagementActor.registerUser(authMethod, 'User', 'Name');
-
-          if ('err' in registerResult) {
-            throw new Error(registerResult.err);
-          }
-        }
-
-        // Set the user role - use proper variant format
-        const roleVariant = { [role]: null };
-        console.log('🔄 Setting role variant:', roleVariant);
-        const roleResult = await userManagementActor.setUserRole(roleVariant);
-
-        if ('err' in roleResult) {
-          throw new Error(roleResult.err);
-        }
-
-        console.log('✅ Role set successfully, refreshing user data...');
-        await refreshUserFromBackend();
-        await initializeUserWallet(); // Initialize wallet after role is set
-
-        // Navigate to the dashboard
-        navigateToUserDashboard(role);
-      } catch (canisterError: unknown) {
-        console.log('🎭 Canister error, creating mock user for development');
-
-        const mockUser: User = {
-          id: `mock_user_${Date.now()}`,
-          principalId: IcpAgent.getPrincipal()?.toText() || 'mock_principal',
-          firstName: 'Demo',
-          lastName: 'User',
-          role: role,
-          verified: false,
-          walletAddress: 'mock_wallet_address',
-          authMethod: 'internet-identity',
-          joinedAt: new Date(),
-          kycStatus: 'pending',
-          lastActive: new Date(),
-        };
-
-        setUser(mockUser);
-        navigateToUserDashboard(role);
+      if ('err' in result) {
+        throw new Error(result.err);
       }
+
+      console.log('✅ Role set successfully, refreshing user data...');
+      await refreshUserFromBackend();
+
+      navigateToUserDashboard(data.role);
     } catch (error: unknown) {
       console.error('❌ Failed to set user role:', error);
       throw error;
@@ -370,86 +405,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleUpdateKYCStatus = async (status: KYCStatus) => {
     try {
-      console.log('📋 Updating KYC status to:', status);
       const userManagementActor = IcpAgent.getUserManagementActor();
-
       if (!userManagementActor) {
-        console.log('⚠️ No user management actor, updating local state only');
         if (user) {
-          setUser({
-            ...user,
-            kycStatus: status,
-            kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
-          });
+          setUser({ ...user, kycStatus: status });
         }
         return;
       }
 
-      const kycStatus = { [status === 'inReview' ? 'inReview' : status]: null };
+      const kycStatus = { [status]: null };
       const result = await userManagementActor.updateKYCStatus(kycStatus);
 
       if ('ok' in result) {
-        console.log('✅ KYC status updated successfully');
         await refreshUserFromBackend();
       } else {
-        console.log('⚠️ KYC update failed, updating local state:', result.err);
         if (user) {
-          setUser({
-            ...user,
-            kycStatus: status,
-            kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
-          });
+          setUser({ ...user, kycStatus: status });
         }
       }
     } catch (error) {
       console.error('❌ Failed to update KYC status:', error);
-      // Update local state as fallback
       if (user) {
-        setUser({
-          ...user,
-          kycStatus: status,
-          kycSubmittedAt: status === 'inReview' ? new Date() : user.kycSubmittedAt,
-        });
+        setUser({ ...user, kycStatus: status });
       }
     }
   };
 
   const handleUpdateProfile = async (profileData: Partial<User>) => {
     try {
-      console.log('👤 Updating profile:', profileData);
       const userManagementActor = IcpAgent.getUserManagementActor();
-
       if (!userManagementActor) {
-        console.log('⚠️ No user management actor, updating local state only');
         if (user) {
           setUser({ ...user, ...profileData });
         }
         return;
       }
 
-      // Update basic profile fields if provided
-      if (profileData.firstName || profileData.lastName) {
-        const result = await userManagementActor.updateProfile(
-          profileData.firstName || user?.firstName || '',
-          profileData.lastName || user?.lastName || ''
-        );
+      const result = await userManagementActor.updateProfile(
+        profileData.firstName || user?.firstName || '',
+        profileData.lastName || user?.lastName || '',
+        profileData.email || user?.email || '',
+        profileData.phone ? [profileData.phone] : [],
+        profileData.bio ? [profileData.bio] : [],
+        profileData.location ? [profileData.location] : [],
+        profileData.company ? [profileData.company] : [],
+        profileData.website ? [profileData.website] : []
+      );
 
-        if ('ok' in result) {
-          console.log('✅ Profile updated successfully');
-          await refreshUserFromBackend();
-        } else {
-          console.log('⚠️ Profile update failed:', result.err);
-          throw new Error(result.err);
-        }
+      if ('ok' in result) {
+        await refreshUserFromBackend();
       } else {
-        // For other fields, update local state (extend this when backend supports more fields)
-        if (user) {
-          setUser({ ...user, ...profileData });
-        }
+        throw new Error(result.err);
       }
     } catch (error) {
       console.error('❌ Failed to update profile:', error);
-      // Update local state as fallback
       if (user) {
         setUser({ ...user, ...profileData });
       }
@@ -457,11 +466,168 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleUpdateProfilePicture = async (file: File) => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await userManagementActor.updateProfilePicture(new Uint8Array(arrayBuffer));
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      await refreshUserFromBackend();
+    } catch (error) {
+      console.error('❌ Failed to update profile picture:', error);
+      throw error;
+    }
+  };
+
+  const handleUploadKYCDocument = async (data: {
+    docType: string;
+    fileName: string;
+    file: File;
+  }) => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      const arrayBuffer = await data.file.arrayBuffer();
+      const result = await userManagementActor.uploadKYCDocument(
+        data.docType,
+        data.fileName,
+        new Uint8Array(arrayBuffer),
+        data.file.type
+      );
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      return result.ok;
+    } catch (error) {
+      console.error('❌ Failed to upload KYC document:', error);
+      throw error;
+    }
+  };
+
+  const handleSubmitKYCForReview = async () => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      const result = await userManagementActor.submitKYCForReview();
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      await refreshUserFromBackend();
+    } catch (error) {
+      console.error('❌ Failed to submit KYC for review:', error);
+      throw error;
+    }
+  };
+
+  const handleGetUserDocuments = async () => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        return [];
+      }
+
+      return await userManagementActor.getUserDocuments();
+    } catch (error) {
+      console.error('❌ Failed to get user documents:', error);
+      return [];
+    }
+  };
+
+  const handleGetWallet = async () => {
+    await refreshWalletFromBackend();
+  };
+
+  const handleAddFunds = async (amount: number, tokenType: 'ICP' | 'USD' | 'Naira' | 'Euro') => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      const tokenVariant = { [tokenType]: null };
+      const result = await userManagementActor.addFunds(amount, tokenVariant);
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      await refreshWalletFromBackend();
+    } catch (error) {
+      console.error('❌ Failed to add funds:', error);
+      throw error;
+    }
+  };
+
+  const handleTransfer = async (data: {
+    to: string;
+    amount: number;
+    tokenType: 'ICP' | 'USD' | 'Naira' | 'Euro';
+    memo?: string;
+  }) => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        throw new Error('User management actor not available');
+      }
+
+      const tokenVariant = { [data.tokenType]: null };
+      const result = await userManagementActor.transfer(
+        data.to,
+        data.amount,
+        tokenVariant,
+        data.memo ? [data.memo] : []
+      );
+
+      if ('err' in result) {
+        throw new Error(result.err);
+      }
+
+      await refreshWalletFromBackend();
+      return result.ok;
+    } catch (error) {
+      console.error('❌ Failed to transfer:', error);
+      throw error;
+    }
+  };
+
+  const handleGetTransactionHistory = async () => {
+    try {
+      const userManagementActor = IcpAgent.getUserManagementActor();
+      if (!userManagementActor) {
+        return [];
+      }
+
+      return await userManagementActor.getTransactionHistory();
+    } catch (error) {
+      console.error('❌ Failed to get transaction history:', error);
+      return [];
+    }
+  };
+
   const handleDisconnect = async () => {
     try {
-      navigationInProgress.current = false; // Reset navigation flag
+      navigationInProgress.current = false;
       await IcpAgent.logout();
       setUser(null);
+      setWallet(null);
       router.push('/');
     } catch (error) {
       console.error('Failed to disconnect:', error);
@@ -472,25 +638,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUserFromBackend();
   };
 
-  const initializeWallet = async () => {
-    await initializeUserWallet();
-  };
-
   const isConnected = !!user;
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        wallet,
         connectWallet: handleConnectWallet,
+        registerUser: handleRegisterUser,
         setUserRole: handleSetUserRole,
         updateKYCStatus: handleUpdateKYCStatus,
         updateProfile: handleUpdateProfile,
+        updateProfilePicture: handleUpdateProfilePicture,
+        uploadKYCDocument: handleUploadKYCDocument,
+        submitKYCForReview: handleSubmitKYCForReview,
+        getUserDocuments: handleGetUserDocuments,
+        getWallet: handleGetWallet,
+        addFunds: handleAddFunds,
+        transfer: handleTransfer,
+        getTransactionHistory: handleGetTransactionHistory,
         disconnect: handleDisconnect,
         isLoading,
         isConnected,
         refreshUser,
-        initializeWallet,
       }}
     >
       {children}
@@ -525,7 +696,7 @@ export function ProtectedRoute({
         return;
       }
 
-      if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+      if (allowedRoles && user && user.role && !allowedRoles.includes(user.role)) {
         const defaultPath = `/dashboard/${user.role}`;
         router.push(redirectTo || defaultPath);
         return;
@@ -541,7 +712,7 @@ export function ProtectedRoute({
     );
   }
 
-  if (!isConnected || (allowedRoles && user && !allowedRoles.includes(user.role))) {
+  if (!isConnected || (allowedRoles && user && user.role && !allowedRoles.includes(user.role))) {
     return null;
   }
 
