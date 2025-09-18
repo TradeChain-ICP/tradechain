@@ -33,8 +33,7 @@ const CONFIG = {
   INTERNET_IDENTITY_URL:
     process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
   NFID_URL: process.env.NEXT_PUBLIC_NFID_URL || 'https://nfid.one/authenticate',
-  USER_MANAGEMENT_CANISTER_ID:
-    process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'uzt4z-lp777-77774-qaabq-cai',
+  USER_MANAGEMENT_CANISTER_ID: process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'wuprw-oqaaa-aaaae-qfx4a-cai',
   WALLET_CANISTER_ID: process.env.NEXT_PUBLIC_WALLET_CANISTER_ID || 'umunu-kh777-77774-qaaca-cai',
   MARKETPLACE_CANISTER_ID:
     process.env.NEXT_PUBLIC_MARKETPLACE_CANISTER_ID || 'ulvla-h7777-77774-qaacq-cai',

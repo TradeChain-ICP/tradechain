@@ -3,7 +3,15 @@
 ## 🎯 Hackathon Track: RWA - Real-World Assets
 
 **🔗 Project Repository:** [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)
-**🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)   
+**🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)  
+**📝 Documentation:** [Documentation URL](https://trade-chain-icp.vercel.app/docs)
+
+## 🎉 Current Successful Deployment Status
+**✅ DEPLOYED SUCCESSFULLY:**
+- **Canister one #1 ID:** `wuprw-oqaaa-aaaae-qfx4a-cai`
+- **Candid one #1 Interface:** https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=wuprw-oqaaa-aaaae-qfx4a-cai
+- **Network:** ICP Mainnet
+- **Status:** Fully functional user_management canister 
 **🔗 Demo Video:** [10-minute walkthrough URL]
 
 ---

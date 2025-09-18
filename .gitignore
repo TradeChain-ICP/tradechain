@@ -55,7 +55,7 @@ build/
 
 # Canister artifacts
 *.wasm
-canisters/
+# canisters/
 
 # Environment files (optional, if you use these)
 .env
