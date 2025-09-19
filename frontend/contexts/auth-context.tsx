@@ -1,4 +1,6 @@
 // frontend/contexts/auth-context.tsx
+// FIXED: Proper variant encoding for DocumentType and other Motoko types
+
 'use client';
 
 import type React from 'react';
@@ -113,6 +115,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Failed to initialize auth:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // HELPER FUNCTION: Convert document type string to Motoko variant
+  const encodeDocumentType = (docType: string) => {
+    switch (docType) {
+      case 'idFront':
+        return { idFront: null };
+      case 'idBack':
+        return { idBack: null };
+      case 'selfie':
+        return { selfie: null };
+      case 'proofOfAddress':
+        return { proofOfAddress: null };
+      default:
+        throw new Error(`Invalid document type: ${docType}`);
+    }
+  };
+
+  // HELPER FUNCTION: Convert token type string to Motoko variant
+  const encodeTokenType = (tokenType: string) => {
+    switch (tokenType) {
+      case 'ICP':
+        return { ICP: null };
+      case 'USD':
+        return { USD: null };
+      case 'Naira':
+        return { Naira: null };
+      case 'Euro':
+        return { Euro: null };
+      default:
+        throw new Error(`Invalid token type: ${tokenType}`);
+    }
+  };
+
+  // HELPER FUNCTION: Convert KYC status string to Motoko variant
+  const encodeKYCStatus = (status: KYCStatus) => {
+    switch (status) {
+      case 'pending':
+        return { pending: null };
+      case 'inReview':
+        return { inReview: null };
+      case 'completed':
+        return { completed: null };
+      case 'rejected':
+        return { rejected: null };
+      default:
+        throw new Error(`Invalid KYC status: ${status}`);
+    }
+  };
+
+  // HELPER FUNCTION: Convert user role string to Motoko variant
+  const encodeUserRole = (role: UserRole) => {
+    switch (role) {
+      case 'buyer':
+        return { buyer: null };
+      case 'seller':
+        return { seller: null };
+      default:
+        throw new Error(`Invalid user role: ${role}`);
+    }
+  };
+
+  // HELPER FUNCTION: Convert auth method string to Motoko variant
+  const encodeAuthMethod = (method: AuthMethod) => {
+    switch (method) {
+      case 'nfid':
+        return { nfid: null };
+      case 'internet-identity':
+        return { internetIdentity: null };
+      default:
+        throw new Error(`Invalid auth method: ${method}`);
     }
   };
 
@@ -349,7 +423,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // FIXED: Register user with proper error handling
+  // FIXED: Register user with proper variant encoding
   const handleRegisterUser = async (data: {
     authMethod: AuthMethod;
     firstName: string;
@@ -372,8 +446,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // FIXED: Proper variant encoding for AuthMethod
-      // The Motoko type expects: variant { nfid; internetIdentity; }
-      const authMethod = data.authMethod === 'nfid' ? { nfid: null } : { internetIdentity: null };
+      const authMethod = encodeAuthMethod(data.authMethod);
 
       console.log('📞 Calling registerUser with:', {
         authMethod,
@@ -439,8 +512,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // FIXED: Proper variant encoding for UserRole
-      // The Motoko type expects: variant { buyer; seller; }
-      const roleVariant = data.role === 'buyer' ? { buyer: null } : { seller: null };
+      const roleVariant = encodeUserRole(data.role);
 
       console.log('📞 Calling setUserRole with:', {
         roleVariant,
@@ -489,7 +561,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const kycStatus = { [status]: null };
+      // FIXED: Proper variant encoding for KYC status
+      const kycStatus = encodeKYCStatus(status);
       const result = await userManagementActor.updateKYCStatus(kycStatus);
 
       if ('ok' in result) {
@@ -563,6 +636,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // FIXED: Upload KYC document with proper variant encoding
   const handleUploadKYCDocument = async (data: {
     docType: string;
     fileName: string;
@@ -574,9 +648,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User management actor not available');
       }
 
+      console.log('🔄 Processing document upload...', {
+        docType: data.docType,
+        fileName: data.fileName,
+        fileSize: data.file.size,
+        fileType: data.file.type,
+      });
+
+      // FIXED: Encode document type as proper Motoko variant
+      const documentTypeVariant = encodeDocumentType(data.docType);
+      console.log('🔧 Encoded document type variant:', documentTypeVariant);
+
       const arrayBuffer = await data.file.arrayBuffer();
+
+      console.log('📞 Calling uploadKYCDocument with variant...');
       const result = await userManagementActor.uploadKYCDocument(
-        data.docType,
+        documentTypeVariant, // This is now a proper variant instead of a string
         data.fileName,
         new Uint8Array(arrayBuffer),
         data.file.type
@@ -586,6 +673,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(result.err);
       }
 
+      console.log('✅ Document uploaded successfully:', result.ok);
       return result.ok;
     } catch (error) {
       console.error('❌ Failed to upload KYC document:', error);
@@ -638,7 +726,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User management actor not available');
       }
 
-      const tokenVariant = { [tokenType]: null };
+      // FIXED: Proper variant encoding for token type
+      const tokenVariant = encodeTokenType(tokenType);
       const result = await userManagementActor.addFunds(amount, tokenVariant);
 
       if ('err' in result) {
@@ -664,7 +753,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User management actor not available');
       }
 
-      const tokenVariant = { [data.tokenType]: null };
+      // FIXED: Proper variant encoding for token type
+      const tokenVariant = encodeTokenType(data.tokenType);
       const result = await userManagementActor.transfer(
         data.to,
         data.amount,
