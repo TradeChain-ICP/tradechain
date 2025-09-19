@@ -20,9 +20,7 @@ echo "🏗️ Redeploying canisters with proper identity handling..."
 # Deploy only the canisters that exist in dfx.json
 dfx deploy internet_identity --network local
 dfx deploy user_management --network local
-# Skip frontend assets canister for now - it causes declaration generation issues
 
-echo "🔗 Regenerating declarations (excluding problematic frontend)..."
 # Generate only for working canisters
 dfx generate internet_identity --network local
 dfx generate user_management --network local
