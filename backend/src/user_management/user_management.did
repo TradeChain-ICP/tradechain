@@ -1,5 +1,5 @@
 // backend/src/user_management/user_management.did
-// Updated Candid interface to match your enhanced functions
+// Updated Candid interface with KYC document handling methods
 
 type UserRole = variant {
   buyer;
@@ -41,25 +41,38 @@ type TransactionStatus = variant {
   cancelled;
 };
 
+type DocumentType = variant {
+  idFront;
+  idBack;
+  selfie;
+  proofOfAddress;
+};
+
+type DocumentStatus = variant {
+  pending;
+  approved;
+  rejected;
+};
+
 // Updated User type with all new fields
 type User = record {
   id: text;
   principalId: text;
   firstName: text;
   lastName: text;
-  email: text;                    // NEW FIELD
-  phone: opt text;               // NEW FIELD
-  profilePicture: opt blob;      // NEW FIELD
+  email: text;
+  phone: opt text;
+  profilePicture: opt blob;
   role: opt UserRole;
   authMethod: AuthMethod;
   kycStatus: KYCStatus;
   kycSubmittedAt: opt int;
   verified: bool;
   walletAddress: text;
-  bio: opt text;                 // NEW FIELD
-  location: opt text;            // NEW FIELD
-  company: opt text;             // NEW FIELD
-  website: opt text;             // NEW FIELD
+  bio: opt text;
+  location: opt text;
+  company: opt text;
+  website: opt text;
   joinedAt: int;
   lastActive: int;
 };
@@ -89,6 +102,20 @@ type Transaction = record {
   memo: opt text;
 };
 
+type KYCDocument = record {
+  id: text;
+  owner: principal;
+  docType: DocumentType;
+  fileName: text;
+  fileData: blob;
+  mimeType: text;
+  uploadedAt: int;
+  status: DocumentStatus;
+  reviewedAt: opt int;
+  reviewedBy: opt principal;
+  rejectionReason: opt text;
+};
+
 type UserStats = record {
   totalUsers: nat;
   verifiedUsers: nat;
@@ -105,6 +132,15 @@ type WalletStats = record {
   totalTransactions: nat;
   totalIcpLocked: nat;
   totalUsdLocked: nat;
+};
+
+type KYCStats = record {
+  totalDocuments: nat;
+  pendingDocuments: nat;
+  approvedDocuments: nat;
+  rejectedDocuments: nat;
+  usersInReview: nat;
+  verifiedUsers: nat;
 };
 
 type HealthCheck = record {
@@ -147,13 +183,23 @@ type Result_Wallet = variant {
 };
 
 service : {
-  // User registration and profile management (UPDATED SIGNATURES)
+  // User registration and profile management
   registerUser: (AuthMethod, text, text, text, opt text, opt blob) -> (Result_User);
   setUserRole: (UserRole, opt text, opt text, opt text, opt text) -> (Result_User);
   getCurrentUser: () -> (Result_User);
   updateProfile: (text, text, text, opt text, opt text, opt text, opt text, opt text) -> (Result_User);
   updateProfilePicture: (blob) -> (Result_User);
   updateKYCStatus: (KYCStatus) -> (Result_User);
+  
+  // KYC Document Management - NEW METHODS
+  uploadKYCDocument: (DocumentType, text, blob, text) -> (Result_Text);
+  getUserDocuments: () -> (vec KYCDocument);
+  getDocument: (text) -> (opt KYCDocument) query;
+  submitKYCForReview: () -> (Result_Text);
+  reviewKYCDocument: (text, bool, opt text) -> (Result_Unit);
+  completeKYCVerification: (principal) -> (Result_Unit);
+  getPendingKYCDocuments: () -> (vec KYCDocument) query;
+  getKYCStatistics: () -> (KYCStats) query;
   
   // Integrated wallet functionality
   getWallet: () -> (Result_Wallet);
@@ -169,7 +215,7 @@ service : {
   userExists: () -> (bool);
   getProfilePicture: () -> (opt blob);
   
-  // Migration functions (NEW)
+  // Migration functions
   getMigrationStatus: () -> (MigrationStatus) query;
   forceMigration: () -> (Result_Text);
   

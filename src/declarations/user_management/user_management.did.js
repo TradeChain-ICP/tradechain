@@ -41,6 +41,30 @@ export const idlFactory = ({ IDL }) => {
     'firstName' : IDL.Text,
   });
   const Result = IDL.Variant({ 'ok' : User, 'err' : IDL.Text });
+  const DocumentStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const DocumentType = IDL.Variant({
+    'selfie' : IDL.Null,
+    'proofOfAddress' : IDL.Null,
+    'idFront' : IDL.Null,
+    'idBack' : IDL.Null,
+  });
+  const KYCDocument = IDL.Record({
+    'id' : IDL.Text,
+    'status' : DocumentStatus,
+    'owner' : IDL.Principal,
+    'rejectionReason' : IDL.Opt(IDL.Text),
+    'fileData' : IDL.Vec(IDL.Nat8),
+    'mimeType' : IDL.Text,
+    'fileName' : IDL.Text,
+    'reviewedAt' : IDL.Opt(IDL.Int),
+    'reviewedBy' : IDL.Opt(IDL.Principal),
+    'docType' : DocumentType,
+    'uploadedAt' : IDL.Int,
+  });
   const TransactionStatus = IDL.Variant({
     'cancelled' : IDL.Null,
     'pending' : IDL.Null,
@@ -81,9 +105,25 @@ export const idlFactory = ({ IDL }) => {
   const Result_3 = IDL.Variant({ 'ok' : Wallet, 'err' : IDL.Text });
   return IDL.Service({
     'addFunds' : IDL.Func([IDL.Nat, TokenType], [Result_2], []),
+    'completeKYCVerification' : IDL.Func([IDL.Principal], [Result_2], []),
     'forceMigration' : IDL.Func([], [Result_1], []),
     'getBalance' : IDL.Func([TokenType], [Result_4], []),
     'getCurrentUser' : IDL.Func([], [Result], []),
+    'getDocument' : IDL.Func([IDL.Text], [IDL.Opt(KYCDocument)], ['query']),
+    'getKYCStatistics' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'usersInReview' : IDL.Nat,
+            'pendingDocuments' : IDL.Nat,
+            'verifiedUsers' : IDL.Nat,
+            'rejectedDocuments' : IDL.Nat,
+            'approvedDocuments' : IDL.Nat,
+            'totalDocuments' : IDL.Nat,
+          }),
+        ],
+        ['query'],
+      ),
     'getMigrationStatus' : IDL.Func(
         [],
         [
@@ -96,6 +136,7 @@ export const idlFactory = ({ IDL }) => {
         ],
         ['query'],
       ),
+    'getPendingKYCDocuments' : IDL.Func([], [IDL.Vec(KYCDocument)], ['query']),
     'getProfilePicture' : IDL.Func([], [IDL.Opt(IDL.Vec(IDL.Nat8))], []),
     'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
     'getTransaction' : IDL.Func([IDL.Text], [IDL.Opt(Transaction)], ['query']),
@@ -110,6 +151,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(UserRole, IDL.Nat))],
         ['query'],
       ),
+    'getUserDocuments' : IDL.Func([], [IDL.Vec(KYCDocument)], []),
     'getUserStats' : IDL.Func(
         [],
         [
@@ -164,6 +206,11 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         [],
       ),
+    'reviewKYCDocument' : IDL.Func(
+        [IDL.Text, IDL.Bool, IDL.Opt(IDL.Text)],
+        [Result_2],
+        [],
+      ),
     'setUserRole' : IDL.Func(
         [
           UserRole,
@@ -176,6 +223,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'setWalletLock' : IDL.Func([IDL.Principal, IDL.Bool], [Result_2], []),
+    'submitKYCForReview' : IDL.Func([], [Result_1], []),
     'transfer' : IDL.Func(
         [IDL.Principal, IDL.Nat, TokenType, IDL.Opt(IDL.Text)],
         [Result_1],
@@ -197,6 +245,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateProfilePicture' : IDL.Func([IDL.Vec(IDL.Nat8)], [Result], []),
+    'uploadKYCDocument' : IDL.Func(
+        [DocumentType, IDL.Text, IDL.Vec(IDL.Nat8), IDL.Text],
+        [Result_1],
+        [],
+      ),
     'userExists' : IDL.Func([], [IDL.Bool], []),
     'validateSession' : IDL.Func([], [Result], []),
   });

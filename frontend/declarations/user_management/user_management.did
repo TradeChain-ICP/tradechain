@@ -105,6 +105,33 @@ type KYCStatus =
    pending;
    rejected;
  };
+type KYCDocument = 
+ record {
+   docType: DocumentType;
+   fileData: blob;
+   fileName: text;
+   id: text;
+   mimeType: text;
+   owner: principal;
+   rejectionReason: opt text;
+   reviewedAt: opt int;
+   reviewedBy: opt principal;
+   status: DocumentStatus;
+   uploadedAt: int;
+ };
+type DocumentType = 
+ variant {
+   idBack;
+   idFront;
+   proofOfAddress;
+   selfie;
+ };
+type DocumentStatus = 
+ variant {
+   approved;
+   pending;
+   rejected;
+ };
 type AuthMethod = 
  variant {
    internetIdentity;
@@ -112,9 +139,20 @@ type AuthMethod =
  };
 service : {
   addFunds: (amount: nat, tokenType: TokenType) -> (Result_2);
+  completeKYCVerification: (userPrincipal: principal) -> (Result_2);
   forceMigration: () -> (Result_1);
   getBalance: (tokenType: TokenType) -> (Result_4);
   getCurrentUser: () -> (Result);
+  getDocument: (docId: text) -> (opt KYCDocument) query;
+  getKYCStatistics: () ->
+   (record {
+      approvedDocuments: nat;
+      pendingDocuments: nat;
+      rejectedDocuments: nat;
+      totalDocuments: nat;
+      usersInReview: nat;
+      verifiedUsers: nat;
+    }) query;
   getMigrationStatus: () ->
    (record {
       info: text;
@@ -122,6 +160,7 @@ service : {
       userCount: nat;
       version: nat;
     }) query;
+  getPendingKYCDocuments: () -> (vec KYCDocument) query;
   getProfilePicture: () -> (opt blob);
   getTotalUsers: () -> (nat) query;
   getTransaction: (txId: text) -> (opt Transaction) query;
@@ -131,6 +170,7 @@ service : {
                                    UserRole;
                                    nat;
                                  }) query;
+  getUserDocuments: () -> (vec KYCDocument);
   getUserStats: () ->
    (record {
       kycCompleted: nat;
@@ -160,9 +200,12 @@ service : {
     }) query;
   registerUser: (authMethod: AuthMethod, firstName: text, lastName: text,
    email: text, phone: opt text, profilePicture: opt blob) -> (Result);
+  reviewKYCDocument: (docId: text, approved: bool, rejectionReason:
+   opt text) -> (Result_2);
   setUserRole: (role: UserRole, bio: opt text, location: opt text, company:
    opt text, website: opt text) -> (Result);
   setWalletLock: (owner: principal, isLocked: bool) -> (Result_2);
+  submitKYCForReview: () -> (Result_1);
   transfer: (to: principal, amount: nat, tokenType: TokenType, memo:
    opt text) -> (Result_1);
   updateKYCStatus: (status: KYCStatus) -> (Result);
@@ -170,6 +213,8 @@ service : {
    opt text, bio: opt text, location: opt text, company: opt text, website:
    opt text) -> (Result);
   updateProfilePicture: (profilePicture: blob) -> (Result);
+  uploadKYCDocument: (docType: DocumentType, fileName: text, fileData: 
+   blob, mimeType: text) -> (Result_1);
   userExists: () -> (bool);
   validateSession: () -> (Result);
 }

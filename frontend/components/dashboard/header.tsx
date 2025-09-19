@@ -41,12 +41,34 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Convert profile picture to URL for display
+  useEffect(() => {
+    if (user?.profilePicture) {
+      try {
+        const blob = new Blob([user.profilePicture], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        setProfileImageUrl(url);
+
+        // Cleanup function to revoke the URL when component unmounts or image changes
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } catch (error) {
+        console.error('Failed to create profile image URL:', error);
+        setProfileImageUrl(null);
+      }
+    } else {
+      setProfileImageUrl(null);
+    }
+  }, [user?.profilePicture]);
 
   // Close search when clicking outside
   useEffect(() => {
@@ -124,7 +146,6 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   };
 
   const currentTheme = mounted ? resolvedTheme : 'light';
-  const logoSrc = '/images/tradechain-logo.png';
 
   return (
     <>
@@ -251,6 +272,13 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
               <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">
+                {profileImageUrl ? (
+                  <AvatarImage 
+                    src={profileImageUrl} 
+                    alt={`${fullName}'s profile`}
+                    className="object-cover"
+                  />
+                ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold text-sm">
                   {initials}
                 </AvatarFallback>
@@ -264,17 +292,29 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                 <div className="px-4 py-3 border-b">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
+                      {profileImageUrl ? (
+                        <AvatarImage 
+                          src={profileImageUrl} 
+                          alt={`${fullName}'s profile`}
+                          className="object-cover"
+                        />
+                      ) : null}
                       <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate text-foreground">{fullName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user?.principalId}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs px-2 py-0 capitalize">
                           {user?.role}
                         </Badge>
+                        {user?.verified && (
+                          <Badge variant="outline" className="text-xs px-2 py-0">
+                            Verified
+                          </Badge>
+                        )}
                         <div className="w-2 h-2 bg-green-500 rounded-full" title="Online" />
                       </div>
                     </div>
@@ -293,12 +333,30 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                   </Link>
 
                   <Link
+                    href="/dashboard/wallet"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>Wallet</span>
+                  </Link>
+
+                  <Link
                     href="/dashboard/settings"
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => setIsProfileOpen(false)}
                   >
                     <Settings className="h-4 w-4 text-muted-foreground" />
                     <span>Settings</span>
+                  </Link>
+
+                  <Link
+                    href="/help"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    <span>Help & Support</span>
                   </Link>
 
                   {/* Theme toggle for mobile */}
