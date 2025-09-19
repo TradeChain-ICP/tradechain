@@ -460,7 +460,6 @@ export default function FunctionalWalletPage() {
             maximumFractionDigits: 2,
           })}`}
           subtitle="All assets combined"
-          trend={12.5}
           color="success"
         />
         <StatCard
@@ -471,7 +470,6 @@ export default function FunctionalWalletPage() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`}
-          trend={2.5}
           color="primary"
         />
         <StatCard
