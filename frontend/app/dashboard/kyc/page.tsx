@@ -1,7 +1,7 @@
 // app/dashboard/kyc/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -138,18 +138,18 @@ export default function KYCVerificationPage() {
         proofOfAddress: null,
       };
 
-      docs.forEach((doc: any) => {
+      docs.forEach((doc) => {
         switch (doc.docType) {
-          case 'id_front':
+          case 'idFront':
             uploadedDocs.idFront = doc.id;
             break;
-          case 'id_back':
+          case 'idBack':
             uploadedDocs.idBack = doc.id;
             break;
           case 'selfie':
             uploadedDocs.selfie = doc.id;
             break;
-          case 'proof_address':
+          case 'proofOfAddress':
             uploadedDocs.proofOfAddress = doc.id;
             break;
         }
@@ -308,6 +308,7 @@ export default function KYCVerificationPage() {
         });
       }, 200);
 
+      // Upload document using the actual backend method
       const documentId = await uploadKYCDocument({
         docType: docType,
         fileName: file.name,
@@ -337,6 +338,7 @@ export default function KYCVerificationPage() {
         description: `Your ${docType.replace(/([A-Z])/g, ' $1').toLowerCase()} has been uploaded successfully.`,
       });
     } catch (error) {
+      console.error('Document upload error:', error);
       toast({
         title: 'Upload Failed',
         description: 'Failed to upload document. Please try again.',
@@ -807,7 +809,50 @@ export default function KYCVerificationPage() {
                 </p>
               </div>
 
-              {/* Review content here */}
+              <div className="space-y-4 border rounded-lg p-4">
+                <h4 className="font-medium">Personal Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Name:</span>
+                    <div>{formData.firstName} {formData.lastName}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Date of Birth:</span>
+                    <div>{formData.dateOfBirth}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Country:</span>
+                    <div>{formData.country}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Phone:</span>
+                    <div>{formData.phoneNumber}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 border rounded-lg p-4">
+                <h4 className="font-medium">Documents Uploaded</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>ID Front Side</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>ID Back Side</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>Selfie with ID</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>Proof of Address</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4 border-t pt-6">
                 <div className="flex items-start space-x-3">
                   <input

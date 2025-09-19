@@ -4,6 +4,26 @@ import type { IDL } from '@dfinity/candid';
 
 export type AuthMethod = { 'internetIdentity' : null } |
   { 'nfid' : null };
+export type DocumentStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
+export type DocumentType = { 'selfie' : null } |
+  { 'proofOfAddress' : null } |
+  { 'idFront' : null } |
+  { 'idBack' : null };
+export interface KYCDocument {
+  'id' : string,
+  'status' : DocumentStatus,
+  'owner' : Principal,
+  'rejectionReason' : [] | [string],
+  'fileData' : Uint8Array | number[],
+  'mimeType' : string,
+  'fileName' : string,
+  'reviewedAt' : [] | [bigint],
+  'reviewedBy' : [] | [Principal],
+  'docType' : DocumentType,
+  'uploadedAt' : bigint,
+}
 export type KYCStatus = { 'pending' : null } |
   { 'completed' : null } |
   { 'inReview' : null } |
@@ -80,9 +100,22 @@ export interface Wallet {
 }
 export interface _SERVICE {
   'addFunds' : ActorMethod<[bigint, TokenType], Result_2>,
+  'completeKYCVerification' : ActorMethod<[Principal], Result_2>,
   'forceMigration' : ActorMethod<[], Result_1>,
   'getBalance' : ActorMethod<[TokenType], Result_4>,
   'getCurrentUser' : ActorMethod<[], Result>,
+  'getDocument' : ActorMethod<[string], [] | [KYCDocument]>,
+  'getKYCStatistics' : ActorMethod<
+    [],
+    {
+      'usersInReview' : bigint,
+      'pendingDocuments' : bigint,
+      'verifiedUsers' : bigint,
+      'rejectedDocuments' : bigint,
+      'approvedDocuments' : bigint,
+      'totalDocuments' : bigint,
+    }
+  >,
   'getMigrationStatus' : ActorMethod<
     [],
     {
@@ -92,12 +125,14 @@ export interface _SERVICE {
       'isComplete' : boolean,
     }
   >,
+  'getPendingKYCDocuments' : ActorMethod<[], Array<KYCDocument>>,
   'getProfilePicture' : ActorMethod<[], [] | [Uint8Array | number[]]>,
   'getTotalUsers' : ActorMethod<[], bigint>,
   'getTransaction' : ActorMethod<[string], [] | [Transaction]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getUserByPrincipal' : ActorMethod<[Principal], [] | [User]>,
   'getUserCountByRole' : ActorMethod<[], Array<[UserRole, bigint]>>,
+  'getUserDocuments' : ActorMethod<[], Array<KYCDocument>>,
   'getUserStats' : ActorMethod<
     [],
     {
@@ -142,11 +177,13 @@ export interface _SERVICE {
     ],
     Result
   >,
+  'reviewKYCDocument' : ActorMethod<[string, boolean, [] | [string]], Result_2>,
   'setUserRole' : ActorMethod<
     [UserRole, [] | [string], [] | [string], [] | [string], [] | [string]],
     Result
   >,
   'setWalletLock' : ActorMethod<[Principal, boolean], Result_2>,
+  'submitKYCForReview' : ActorMethod<[], Result_1>,
   'transfer' : ActorMethod<
     [Principal, bigint, TokenType, [] | [string]],
     Result_1
@@ -166,6 +203,10 @@ export interface _SERVICE {
     Result
   >,
   'updateProfilePicture' : ActorMethod<[Uint8Array | number[]], Result>,
+  'uploadKYCDocument' : ActorMethod<
+    [DocumentType, string, Uint8Array | number[], string],
+    Result_1
+  >,
   'userExists' : ActorMethod<[], boolean>,
   'validateSession' : ActorMethod<[], Result>,
 }

@@ -52,6 +52,36 @@ module {
         #cancelled;
     };
 
+    // Document types for KYC verification
+    public type DocumentType = {
+        #idFront;
+        #idBack;
+        #selfie;
+        #proofOfAddress;
+    };
+
+    // Document status for KYC verification
+    public type DocumentStatus = {
+        #pending;
+        #approved;
+        #rejected;
+    };
+
+    // KYC Document type
+    public type KYCDocument = {
+        id: Text;
+        owner: Principal;
+        docType: DocumentType;
+        fileName: Text;
+        fileData: Blob;
+        mimeType: Text;
+        uploadedAt: Int;
+        status: DocumentStatus;
+        reviewedAt: ?Int;
+        reviewedBy: ?Principal;
+        rejectionReason: ?Text;
+    };
+
     // Enhanced user type with profile data
     public type User = {
         id: Text;
@@ -150,6 +180,21 @@ module {
         memo: ?Text;
     };
 
+    // KYC Document upload request
+    public type KYCDocumentUpload = {
+        docType: DocumentType;
+        fileName: Text;
+        fileData: Blob;
+        mimeType: Text;
+    };
+
+    // KYC Document review request
+    public type KYCDocumentReview = {
+        docId: Text;
+        approved: Bool;
+        rejectionReason: ?Text;
+    };
+
     // Error types
     public type UserError = {
         #UserNotFound;
@@ -164,6 +209,9 @@ module {
         #WalletLocked;
         #InvalidAmount;
         #TransferFailed;
+        #DocumentNotFound;
+        #DocumentUploadFailed;
+        #KYCSubmissionFailed;
     };
 
     // Query filters
@@ -203,6 +251,16 @@ module {
         totalEuroLocked: Nat;
     };
 
+    // KYC statistics for admin
+    public type KYCStats = {
+        totalDocuments: Nat;
+        pendingDocuments: Nat;
+        approvedDocuments: Nat;
+        rejectedDocuments: Nat;
+        usersInReview: Nat;
+        verifiedUsers: Nat;
+    };
+
     // Session info
     public type SessionInfo = {
         user: User;
@@ -217,11 +275,18 @@ module {
         hasMore: Bool;
     };
 
-    // KYC submission response (without document dependencies)
+    // KYC submission response
     public type KYCSubmissionResponse = {
         referenceId: Text;
         status: KYCStatus;
         submittedAt: Int;
         estimatedCompletion: ?Int;
+    };
+
+    // Document upload response
+    public type DocumentUploadResponse = {
+        documentId: Text;
+        status: DocumentStatus;
+        uploadedAt: Int;
     };
 }

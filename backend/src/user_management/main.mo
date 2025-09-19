@@ -1,5 +1,5 @@
 // backend/src/user_management/main.mo
-// SAFE UPDATE: Add explicit migration handling
+// UPDATED: Added complete KYC document handling methods
 
 import Principal "mo:base/Principal";
 import HashMap "mo:base/HashMap";
@@ -29,6 +29,9 @@ persistent actor UserManagement {
     type Transaction = Types.Transaction;
     type TransactionType = Types.TransactionType;
     type TransactionStatus = Types.TransactionStatus;
+    type KYCDocument = Types.KYCDocument;
+    type DocumentType = Types.DocumentType;
+    type DocumentStatus = Types.DocumentStatus;
     type Result<T, E> = Result.Result<T, E>;
     type UserId = Text;
 
@@ -40,8 +43,10 @@ persistent actor UserManagement {
     private var userEntries : [(Principal, User)] = [];
     private var walletEntries : [(Principal, Wallet)] = [];
     private var transactionEntries : [(Text, Transaction)] = [];
+    private var kycDocumentEntries : [(Text, KYCDocument)] = [];
     private var userIdCounter : Nat = 0;
     private var transactionIdCounter : Nat = 0;
+    private var documentIdCounter : Nat = 0;
     private var _migrationVersion: Nat = 2;
 
     // Add legacy storage for migration
@@ -51,6 +56,8 @@ persistent actor UserManagement {
     private transient var users = HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
     private transient var wallets = HashMap.HashMap<Principal, Wallet>(10, Principal.equal, Principal.hash);
     private transient var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
+    private transient var kycDocuments = HashMap.HashMap<Text, KYCDocument>(100, Text.equal, Text.hash);
+    private transient var userDocuments = HashMap.HashMap<Principal, [Text]>(10, Principal.equal, Principal.hash);
     private transient var usersByRole = HashMap.HashMap<UserRole, [Principal]>(2, func(a: UserRole, b: UserRole) : Bool { a == b }, func(role: UserRole) : Nat32 {
         switch(role) {
             case (#buyer) 0;
@@ -109,6 +116,7 @@ persistent actor UserManagement {
         
         walletEntries := Iter.toArray(wallets.entries());
         transactionEntries := Iter.toArray(transactions.entries());
+        kycDocumentEntries := Iter.toArray(kycDocuments.entries());
     };
 
     system func postupgrade() {
@@ -120,11 +128,13 @@ persistent actor UserManagement {
         // Load wallets and transactions normally (these don't need migration)
         wallets := HashMap.fromIter(walletEntries.vals(), walletEntries.size(), Principal.equal, Principal.hash);
         transactions := HashMap.fromIter(transactionEntries.vals(), transactionEntries.size(), Text.equal, Text.hash);
+        kycDocuments := HashMap.fromIter(kycDocumentEntries.vals(), kycDocumentEntries.size(), Text.equal, Text.hash);
         
         // Clear the stable arrays to save memory
         userEntries := [];
         walletEntries := [];
         transactionEntries := [];
+        kycDocumentEntries := [];
         
         // Rebuild indexes
         for ((principal, user) in users.entries()) {
@@ -157,6 +167,15 @@ persistent actor UserManagement {
             };
         };
 
+        // Rebuild user documents index
+        for ((docId, doc) in kycDocuments.entries()) {
+            let userDocs = switch(userDocuments.get(doc.owner)) {
+                case (?docs) Array.append(docs, [docId]);
+                case null [docId];
+            };
+            userDocuments.put(doc.owner, userDocs);
+        };
+
         Debug.print("✅ Post-upgrade completed successfully");
     };
 
@@ -177,6 +196,319 @@ persistent actor UserManagement {
         performExplicitMigration();
         let status = if (migrationCompleted) "completed" else "failed";
         #ok("Migration " # status # " - " # Nat.toText(users.size()) # " users loaded")
+    };
+
+    // KYC DOCUMENT METHODS - NEW IMPLEMENTATION
+
+    // Upload KYC document
+    public shared(msg) func uploadKYCDocument(
+        docType: DocumentType,
+        fileName: Text,
+        fileData: Blob,
+        mimeType: Text
+    ) : async Result<Text, Text> {
+        let caller = msg.caller;
+        
+        // Check if user exists
+        switch(users.get(caller)) {
+            case null {
+                return #err("User not found. Please register first.");
+            };
+            case (?user) {
+                // Validate file size (10MB limit)
+                if (fileData.size() > 10 * 1024 * 1024) {
+                    return #err("File too large. Maximum size is 10MB.");
+                };
+
+                // Validate file type
+                let validMimeTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+                var isValidType = false;
+                for (validType in validMimeTypes.vals()) {
+                    if (mimeType == validType) {
+                        isValidType := true;
+                    };
+                };
+
+                if (not isValidType) {
+                    return #err("Invalid file type. Only JPG, PNG, and PDF files are allowed.");
+                };
+
+                // Generate document ID
+                documentIdCounter += 1;
+                let docId = "doc_" # Nat.toText(documentIdCounter);
+
+                // Create document record
+                let document : KYCDocument = {
+                    id = docId;
+                    owner = caller;
+                    docType = docType;
+                    fileName = fileName;
+                    fileData = fileData;
+                    mimeType = mimeType;
+                    uploadedAt = Time.now();
+                    status = #pending;
+                    reviewedAt = null;
+                    reviewedBy = null;
+                    rejectionReason = null;
+                };
+
+                // Store document
+                kycDocuments.put(docId, document);
+
+                // Update user documents index
+                let userDocs = switch(userDocuments.get(caller)) {
+                    case (?docs) Array.append(docs, [docId]);
+                    case null [docId];
+                };
+                userDocuments.put(caller, userDocs);
+
+                Debug.print("Document uploaded: " # docId # " for user: " # user.id);
+                #ok(docId)
+            };
+        };
+    };
+
+    // Get user's KYC documents
+    public shared(msg) func getUserDocuments() : async [KYCDocument] {
+        let caller = msg.caller;
+        
+        let userDocs = switch(userDocuments.get(caller)) {
+            case (?docs) docs;
+            case null [];
+        };
+
+        Array.mapFilter<Text, KYCDocument>(userDocs, func(docId) {
+            kycDocuments.get(docId)
+        })
+    };
+
+    // Get specific document (admin function)
+    public query func getDocument(docId: Text) : async ?KYCDocument {
+        kycDocuments.get(docId)
+    };
+
+    // Submit KYC for review
+    public shared(msg) func submitKYCForReview() : async Result<Text, Text> {
+        let caller = msg.caller;
+        
+        switch(users.get(caller)) {
+            case null {
+                #err("User not found")
+            };
+            case (?user) {
+                // Check if user has uploaded required documents
+                let userDocs = switch(userDocuments.get(caller)) {
+                    case (?docs) docs;
+                    case null [];
+                };
+
+                if (userDocs.size() < 4) {
+                    return #err("Please upload all required documents before submitting for review.");
+                };
+
+                // Check if all required document types are present
+                var hasIdFront = false;
+                var hasIdBack = false;
+                var hasSelfie = false;
+                var hasProofAddress = false;
+
+                for (docId in userDocs.vals()) {
+                    switch(kycDocuments.get(docId)) {
+                        case (?doc) {
+                            switch(doc.docType) {
+                                case (#idFront) hasIdFront := true;
+                                case (#idBack) hasIdBack := true;
+                                case (#selfie) hasSelfie := true;
+                                case (#proofOfAddress) hasProofAddress := true;
+                            };
+                        };
+                        case null {};
+                    };
+                };
+
+                if (not (hasIdFront and hasIdBack and hasSelfie and hasProofAddress)) {
+                    return #err("Missing required documents. Please upload ID front, ID back, selfie, and proof of address.");
+                };
+
+                // Update user KYC status to inReview
+                let updatedUser : User = {
+                    id = user.id;
+                    principalId = user.principalId;
+                    firstName = user.firstName;
+                    lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = user.profilePicture;
+                    role = user.role;
+                    authMethod = user.authMethod;
+                    kycStatus = #inReview;
+                    kycSubmittedAt = ?Time.now();
+                    verified = user.verified;
+                    walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
+                    joinedAt = user.joinedAt;
+                    lastActive = Time.now();
+                };
+
+                users.put(caller, updatedUser);
+                Debug.print("KYC submitted for review: " # user.id);
+                #ok("KYC verification submitted successfully")
+            };
+        };
+    };
+
+    // Review KYC document (admin function)
+    public shared(msg) func reviewKYCDocument(
+        docId: Text,
+        approved: Bool,
+        rejectionReason: ?Text
+    ) : async Result<(), Text> {
+        let caller = msg.caller;
+        
+        // In a real implementation, you'd check admin permissions here
+        
+        switch(kycDocuments.get(docId)) {
+            case null {
+                #err("Document not found")
+            };
+            case (?doc) {
+                let updatedDoc : KYCDocument = {
+                    id = doc.id;
+                    owner = doc.owner;
+                    docType = doc.docType;
+                    fileName = doc.fileName;
+                    fileData = doc.fileData;
+                    mimeType = doc.mimeType;
+                    uploadedAt = doc.uploadedAt;
+                    status = if (approved) #approved else #rejected;
+                    reviewedAt = ?Time.now();
+                    reviewedBy = ?caller;
+                    rejectionReason = rejectionReason;
+                };
+
+                kycDocuments.put(docId, updatedDoc);
+                Debug.print("Document " # docId # " reviewed: " # (if approved "approved" else "rejected"));
+                #ok(())
+            };
+        };
+    };
+
+    // Complete KYC verification (admin function)
+    public shared(msg) func completeKYCVerification(userPrincipal: Principal) : async Result<(), Text> {
+        let _caller = msg.caller;
+        
+        // In a real implementation, you'd check admin permissions here
+        
+        switch(users.get(userPrincipal)) {
+            case null {
+                #err("User not found")
+            };
+            case (?user) {
+                // Check if all documents are approved
+                let userDocs = switch(userDocuments.get(userPrincipal)) {
+                    case (?docs) docs;
+                    case null [];
+                };
+
+                var allApproved = true;
+                for (docId in userDocs.vals()) {
+                    switch(kycDocuments.get(docId)) {
+                        case (?doc) {
+                            if (doc.status != #approved) {
+                                allApproved := false;
+                            };
+                        };
+                        case null {
+                            allApproved := false;
+                        };
+                    };
+                };
+
+                if (not allApproved) {
+                    return #err("Not all documents are approved");
+                };
+
+                // Update user KYC status to completed
+                let updatedUser : User = {
+                    id = user.id;
+                    principalId = user.principalId;
+                    firstName = user.firstName;
+                    lastName = user.lastName;
+                    email = user.email;
+                    phone = user.phone;
+                    profilePicture = user.profilePicture;
+                    role = user.role;
+                    authMethod = user.authMethod;
+                    kycStatus = #completed;
+                    kycSubmittedAt = user.kycSubmittedAt;
+                    verified = true;
+                    walletAddress = user.walletAddress;
+                    bio = user.bio;
+                    location = user.location;
+                    company = user.company;
+                    website = user.website;
+                    joinedAt = user.joinedAt;
+                    lastActive = Time.now();
+                };
+
+                users.put(userPrincipal, updatedUser);
+                Debug.print("KYC verification completed for user: " # user.id);
+                #ok(())
+            };
+        };
+    };
+
+    // Get all pending KYC documents (admin function)
+    public query func getPendingKYCDocuments() : async [KYCDocument] {
+        let allDocs = Iter.toArray(kycDocuments.vals());
+        Array.filter<KYCDocument>(allDocs, func(doc) {
+            doc.status == #pending
+        })
+    };
+
+    // Get KYC statistics (admin function)
+    public query func getKYCStatistics() : async {
+        totalDocuments: Nat;
+        pendingDocuments: Nat;
+        approvedDocuments: Nat;
+        rejectedDocuments: Nat;
+        usersInReview: Nat;
+        verifiedUsers: Nat;
+    } {
+        var pendingDocs = 0;
+        var approvedDocs = 0;
+        var rejectedDocs = 0;
+
+        for ((_, doc) in kycDocuments.entries()) {
+            switch(doc.status) {
+                case (#pending) pendingDocs += 1;
+                case (#approved) approvedDocs += 1;
+                case (#rejected) rejectedDocs += 1;
+            };
+        };
+
+        var usersInReview = 0;
+        var verifiedUsers = 0;
+
+        for ((_, user) in users.entries()) {
+            switch(user.kycStatus) {
+                case (#inReview) usersInReview += 1;
+                case (#completed) verifiedUsers += 1;
+                case (_) {};
+            };
+        };
+
+        {
+            totalDocuments = kycDocuments.size();
+            pendingDocuments = pendingDocs;
+            approvedDocuments = approvedDocs;
+            rejectedDocuments = rejectedDocs;
+            usersInReview = usersInReview;
+            verifiedUsers = verifiedUsers;
+        }
     };
 
     // Enhanced user registration with profile data
