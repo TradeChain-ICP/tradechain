@@ -351,7 +351,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                   </Link>
 
                   <Link
-                    href="/help"
+                    href="/dashboard/help"
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => setIsProfileOpen(false)}
                   >
