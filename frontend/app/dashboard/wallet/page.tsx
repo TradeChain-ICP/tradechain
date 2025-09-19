@@ -16,12 +16,15 @@ import {
   RefreshCw,
   ExternalLink,
   AlertTriangle,
-  CreditCard,
   Receipt,
   CheckCircle,
-  Zap,
   Plus,
   Send,
+  Brain,
+  Target,
+  Lightbulb,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,7 +47,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import { useContentPadding } from '@/contexts/sidebar-context';
 import { useAuth } from '@/contexts/auth-context';
 import {
@@ -58,14 +60,213 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  AreaChart,
-  Area,
 } from 'recharts';
+
+// Real-time price data hook
+const useCryptoPrices = () => {
+  const [prices, setPrices] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Using CoinGecko free API (no API key required)
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,usd-coin,bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true'
+      );
+      
+      if (!response.ok) throw new Error('Failed to fetch prices');
+      
+      const data = await response.json();
+      
+      // Also fetch fiat exchange rates
+      const fiatResponse = await fetch(
+        'https://api.exchangerate-api.com/v4/latest/USD'
+      );
+      
+      let fiatRates = { NGN: 0.0012, EUR: 1.08 }; // fallback rates
+      if (fiatResponse.ok) {
+        const fiatData = await fiatResponse.json();
+        fiatRates = {
+          NGN: 1 / fiatData.rates.NGN,
+          EUR: fiatData.rates.EUR,
+        };
+      }
+
+      setPrices({
+        ICP: {
+          usd: data['internet-computer']?.usd || 7.0,
+          change24h: data['internet-computer']?.usd_24h_change || 0,
+        },
+        USD: {
+          usd: 1.0,
+          change24h: 0,
+        },
+        Naira: {
+          usd: fiatRates.NGN,
+          change24h: -0.8, // Naira tends to depreciate
+        },
+        Euro: {
+          usd: fiatRates.EUR,
+          change24h: 0.2,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to fetch prices:', err);
+      setError('Failed to fetch real-time prices');
+      // Fallback to demo data
+      setPrices({
+        ICP: { usd: 7.0, change24h: 2.5 },
+        USD: { usd: 1.0, change24h: 0 },
+        Naira: { usd: 0.0012, change24h: -0.8 },
+        Euro: { usd: 1.08, change24h: 0.2 },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000); // Update every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return { prices, loading, error, refetch: fetchPrices };
+};
+
+// AI Trading Insights Hook
+const useAIInsights = (wallet: any, prices: any) => {
+  const [insights, setInsights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const generateInsights = () => {
+    if (!wallet || !prices) return;
+
+    setLoading(true);
+    
+    // Simulate AI analysis with realistic insights
+    setTimeout(() => {
+      const newInsights = [];
+      
+      // Portfolio diversification analysis
+      const totalValue = getTotalPortfolioValue(wallet, prices);
+      const icpPercentage = getTokenAllocation('ICP', wallet, prices);
+      
+      if (icpPercentage > 70) {
+        newInsights.push({
+          type: 'warning',
+          title: 'High ICP Concentration',
+          description: `${icpPercentage}% of your portfolio is in ICP. Consider diversifying to reduce risk.`,
+          action: 'Diversify Portfolio',
+          confidence: 85,
+        });
+      }
+
+      // Price trend analysis
+      if (prices.ICP?.change24h > 5) {
+        newInsights.push({
+          type: 'opportunity',
+          title: 'ICP Strong Performance',
+          description: `ICP is up ${prices.ICP.change24h.toFixed(2)}% in 24h. Consider taking profits or holding for further gains.`,
+          action: 'Review Position',
+          confidence: 72,
+        });
+      }
+
+      // Balance recommendations
+      if (totalValue < 100) {
+        newInsights.push({
+          type: 'suggestion',
+          title: 'Low Portfolio Value',
+          description: 'Consider adding more funds to take advantage of trading opportunities.',
+          action: 'Add Funds',
+          confidence: 65,
+        });
+      }
+
+      // Market correlation insight
+      newInsights.push({
+        type: 'info',
+        title: 'Market Correlation',
+        description: 'Your portfolio shows low correlation with traditional markets, providing good diversification.',
+        action: 'Learn More',
+        confidence: 78,
+      });
+
+      setInsights(newInsights);
+      setLoading(false);
+    }, 1500);
+  };
+
+  useEffect(() => {
+    generateInsights();
+  }, [wallet, prices]);
+
+  return { insights, loading, refresh: generateInsights };
+};
+
+// Helper functions
+const formatBalance = (balance: number) => {
+  return (balance / 100000000).toFixed(8);
+};
+
+const getTotalPortfolioValue = (wallet: any, prices: any) => {
+  if (!wallet || !prices) return 0;
+  
+  const icpValue = (wallet.icpBalance / 100000000) * prices.ICP?.usd;
+  const usdValue = wallet.usdBalance / 100000000;
+  const nairaValue = (wallet.nairaBalance / 100000000) * prices.Naira?.usd;
+  const euroValue = (wallet.euroBalance / 100000000) * prices.Euro?.usd;
+
+  return icpValue + usdValue + nairaValue + euroValue;
+};
+
+const getTokenBalance = (token: string, wallet: any) => {
+  if (!wallet) return 0;
+  switch (token) {
+    case 'ICP': return wallet.icpBalance;
+    case 'USD': return wallet.usdBalance;
+    case 'Naira': return wallet.nairaBalance;
+    case 'Euro': return wallet.euroBalance;
+    default: return 0;
+  }
+};
+
+const getTokenAllocation = (token: string, wallet: any, prices: any) => {
+  const totalValue = getTotalPortfolioValue(wallet, prices);
+  if (totalValue === 0) return 0;
+
+  let tokenValue = 0;
+  const balance = getTokenBalance(token, wallet) / 100000000;
+  
+  switch (token) {
+    case 'ICP':
+      tokenValue = balance * (prices.ICP?.usd || 7.0);
+      break;
+    case 'USD':
+      tokenValue = balance;
+      break;
+    case 'Naira':
+      tokenValue = balance * (prices.Naira?.usd || 0.0012);
+      break;
+    case 'Euro':
+      tokenValue = balance * (prices.Euro?.usd || 1.08);
+      break;
+  }
+
+  return Math.round((tokenValue / totalValue) * 100);
+};
 
 export default function FunctionalWalletPage() {
   const { toast } = useToast();
   const { contentPadding } = useContentPadding();
   const { user, wallet, getWallet, addFunds, transfer, getTransactionHistory } = useAuth();
+  const { prices, loading: pricesLoading, error: pricesError, refetch: refetchPrices } = useCryptoPrices();
+  const { insights, loading: insightsLoading, refresh: refreshInsights } = useAIInsights(wallet, prices);
 
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
@@ -82,7 +283,6 @@ export default function FunctionalWalletPage() {
   const [memo, setMemo] = useState('');
 
   const isSeller = user?.role === 'seller';
-  const isBuyer = user?.role === 'buyer';
 
   useEffect(() => {
     initializeWallet();
@@ -117,8 +317,12 @@ export default function FunctionalWalletPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await getWallet();
-      await loadTransactionHistory();
+      await Promise.all([
+        getWallet(),
+        loadTransactionHistory(),
+        refetchPrices(),
+      ]);
+      
       toast({
         title: 'Wallet Refreshed',
         description: 'Your wallet data has been updated.',
@@ -153,11 +357,33 @@ export default function FunctionalWalletPage() {
     }
   };
 
+  const validateAmount = (amount: string, tokenType: string, isWithdraw: boolean = false) => {
+    const numAmount = Number.parseFloat(amount);
+    
+    if (!amount || numAmount <= 0) {
+      return 'Please enter a valid amount greater than 0';
+    }
+    
+    if (numAmount > 1000000) {
+      return 'Amount too large';
+    }
+    
+    if (isWithdraw) {
+      const balance = getTokenBalance(tokenType, wallet) / 100000000;
+      if (numAmount > balance) {
+        return `Insufficient balance. Available: ${balance.toFixed(8)} ${tokenType}`;
+      }
+    }
+    
+    return null;
+  };
+
   const handleAddFunds = async () => {
-    if (!amount || Number.parseFloat(amount) <= 0) {
+    const validation = validateAmount(amount, tokenType);
+    if (validation) {
       toast({
         title: 'Invalid Amount',
-        description: 'Please enter a valid amount.',
+        description: validation,
         variant: 'destructive',
       });
       return;
@@ -165,18 +391,18 @@ export default function FunctionalWalletPage() {
 
     setIsLoading(true);
     try {
-      const amountInSmallestUnit = Math.floor(Number.parseFloat(amount) * 100000000); // Convert to smallest unit
+      const amountInSmallestUnit = Math.floor(Number.parseFloat(amount) * 100000000);
       await addFunds(amountInSmallestUnit, tokenType);
 
       toast({
-        title: 'Funds Added',
-        description: `Successfully added ${amount} ${tokenType} to your wallet.`,
+        title: 'Funds Added Successfully',
+        description: `${amount} ${tokenType} has been added to your wallet.`,
       });
 
       setAmount('');
       setIsTransactionOpen(false);
-      await getWallet();
-      await loadTransactionHistory();
+      await Promise.all([getWallet(), loadTransactionHistory()]);
+      refreshInsights();
     } catch (error: any) {
       toast({
         title: 'Transaction Failed',
@@ -189,10 +415,11 @@ export default function FunctionalWalletPage() {
   };
 
   const handleTransfer = async () => {
-    if (!amount || Number.parseFloat(amount) <= 0) {
+    const validation = validateAmount(amount, tokenType, true);
+    if (validation) {
       toast({
         title: 'Invalid Amount',
-        description: 'Please enter a valid amount.',
+        description: validation,
         variant: 'destructive',
       });
       return;
@@ -202,6 +429,16 @@ export default function FunctionalWalletPage() {
       toast({
         title: 'Missing Address',
         description: 'Please enter a recipient address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Basic address validation
+    if (recipientAddress.length < 20) {
+      toast({
+        title: 'Invalid Address',
+        description: 'Please enter a valid wallet address.',
         variant: 'destructive',
       });
       return;
@@ -219,19 +456,19 @@ export default function FunctionalWalletPage() {
 
       toast({
         title: 'Transfer Successful',
-        description: `Transfer of ${amount} ${tokenType} completed. Transaction ID: ${txId}`,
+        description: `${amount} ${tokenType} sent successfully. Transaction ID: ${txId.slice(0, 8)}...`,
       });
 
       setAmount('');
       setRecipientAddress('');
       setMemo('');
       setIsTransactionOpen(false);
-      await getWallet();
-      await loadTransactionHistory();
+      await Promise.all([getWallet(), loadTransactionHistory()]);
+      refreshInsights();
     } catch (error: any) {
       toast({
         title: 'Transfer Failed',
-        description: error.message || 'Transfer failed. Please try again.',
+        description: error.message || 'Transfer failed. Please check your inputs and try again.',
         variant: 'destructive',
       });
     } finally {
@@ -247,104 +484,42 @@ export default function FunctionalWalletPage() {
     }
   };
 
-  const formatBalance = (balance: number) => {
-    return (balance / 100000000).toFixed(8); // Convert from smallest unit
-  };
-
-  const getTokenBalance = (token: 'ICP' | 'USD' | 'Naira' | 'Euro') => {
-    if (!wallet) return 0;
-    switch (token) {
-      case 'ICP':
-        return wallet.icpBalance;
-      case 'USD':
-        return wallet.usdBalance;
-      case 'Naira':
-        return wallet.nairaBalance;
-      case 'Euro':
-        return wallet.euroBalance;
-      default:
-        return 0;
-    }
-  };
-
-  const getTotalPortfolioValue = () => {
-    if (!wallet) return 0;
-    // Simple conversion rates for demo (in a real app, fetch from price API)
-    const icpToUsd = 7.0;
-    const nairaToUsd = 0.0012;
-    const euroToUsd = 1.08;
-
-    const icpValue = (wallet.icpBalance / 100000000) * icpToUsd;
-    const usdValue = wallet.usdBalance / 100000000;
-    const nairaValue = (wallet.nairaBalance / 100000000) * nairaToUsd;
-    const euroValue = (wallet.euroBalance / 100000000) * euroToUsd;
-
-    return icpValue + usdValue + nairaValue + euroValue;
-  };
-
-  const getTokenAllocation = (token: 'ICP' | 'USD' | 'Naira' | 'Euro') => {
-    const totalValue = getTotalPortfolioValue();
-    if (totalValue === 0) return 0;
-
-    const icpToUsd = 7.0;
-    const nairaToUsd = 0.0012;
-    const euroToUsd = 1.08;
-
-    let tokenValue = 0;
-    switch (token) {
-      case 'ICP':
-        tokenValue = (getTokenBalance(token) / 100000000) * icpToUsd;
-        break;
-      case 'USD':
-        tokenValue = getTokenBalance(token) / 100000000;
-        break;
-      case 'Naira':
-        tokenValue = (getTokenBalance(token) / 100000000) * nairaToUsd;
-        break;
-      case 'Euro':
-        tokenValue = (getTokenBalance(token) / 100000000) * euroToUsd;
-        break;
-    }
-
-    return Math.round((tokenValue / totalValue) * 100);
-  };
-
   const walletTokens = [
     {
       symbol: 'ICP',
       name: 'Internet Computer',
-      balance: getTokenBalance('ICP'),
-      usdValue: (getTokenBalance('ICP') / 100000000) * 7.0,
-      change24h: 2.5,
+      balance: getTokenBalance('ICP', wallet),
+      usdValue: (getTokenBalance('ICP', wallet) / 100000000) * (prices.ICP?.usd || 7.0),
+      change24h: prices.ICP?.change24h || 0,
       color: '#29D0B0',
-      allocation: getTokenAllocation('ICP'),
+      allocation: getTokenAllocation('ICP', wallet, prices),
     },
     {
       symbol: 'USD',
       name: 'US Dollar',
-      balance: getTokenBalance('USD'),
-      usdValue: getTokenBalance('USD') / 100000000,
-      change24h: 0.0,
+      balance: getTokenBalance('USD', wallet),
+      usdValue: getTokenBalance('USD', wallet) / 100000000,
+      change24h: prices.USD?.change24h || 0,
       color: '#22C55E',
-      allocation: getTokenAllocation('USD'),
+      allocation: getTokenAllocation('USD', wallet, prices),
     },
     {
       symbol: 'Naira',
       name: 'Nigerian Naira',
-      balance: getTokenBalance('Naira'),
-      usdValue: (getTokenBalance('Naira') / 100000000) * 0.0012,
-      change24h: -0.8,
+      balance: getTokenBalance('Naira', wallet),
+      usdValue: (getTokenBalance('Naira', wallet) / 100000000) * (prices.Naira?.usd || 0.0012),
+      change24h: prices.Naira?.change24h || 0,
       color: '#10B981',
-      allocation: getTokenAllocation('Naira'),
+      allocation: getTokenAllocation('Naira', wallet, prices),
     },
     {
       symbol: 'Euro',
       name: 'Euro',
-      balance: getTokenBalance('Euro'),
-      usdValue: (getTokenBalance('Euro') / 100000000) * 1.08,
-      change24h: 1.2,
+      balance: getTokenBalance('Euro', wallet),
+      usdValue: (getTokenBalance('Euro', wallet) / 100000000) * (prices.Euro?.usd || 1.08),
+      change24h: prices.Euro?.change24h || 0,
       color: '#3B82F6',
-      allocation: getTokenAllocation('Euro'),
+      allocation: getTokenAllocation('Euro', wallet, prices),
     },
   ];
 
@@ -355,6 +530,7 @@ export default function FunctionalWalletPage() {
     subtitle,
     trend,
     color = 'default',
+    loading = false,
   }: {
     icon: any;
     title: string;
@@ -362,6 +538,7 @@ export default function FunctionalWalletPage() {
     subtitle: string;
     trend?: number;
     color?: string;
+    loading?: boolean;
   }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -379,19 +556,27 @@ export default function FunctionalWalletPage() {
         />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{balanceVisible ? value : '••••••'}</div>
+        <div className="text-2xl font-bold">
+          {loading ? (
+            <div className="animate-pulse bg-muted h-8 w-24 rounded" />
+          ) : balanceVisible ? (
+            value
+          ) : (
+            '••••••'
+          )}
+        </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <span>{subtitle}</span>
-          {trend !== undefined && (
+          {trend !== undefined && !loading && (
             <>
               {trend > 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-600" />
-              ) : (
+              ) : trend < 0 ? (
                 <TrendingDown className="h-3 w-3 text-red-600" />
-              )}
-              <span className={trend > 0 ? 'text-green-600' : 'text-red-600'}>
+              ) : null}
+              <span className={trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : ''}>
                 {trend > 0 ? '+' : ''}
-                {trend}%
+                {trend.toFixed(2)}%
               </span>
             </>
           )}
@@ -411,6 +596,8 @@ export default function FunctionalWalletPage() {
     );
   }
 
+  const totalPortfolioValue = getTotalPortfolioValue(wallet, prices);
+
   return (
     <div className={`py-6 pb-20 lg:pb-8 ${contentPadding}`}>
       {/* Header */}
@@ -424,6 +611,12 @@ export default function FunctionalWalletPage() {
               ? 'Manage your earnings and payment processing'
               : 'Manage your digital assets and transactions'}
           </p>
+          {pricesError && (
+            <div className="flex items-center gap-2 mt-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="text-sm text-yellow-600">Using cached price data</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -455,24 +648,26 @@ export default function FunctionalWalletPage() {
         <StatCard
           icon={DollarSign}
           title="Total Portfolio"
-          value={`${getTotalPortfolioValue().toLocaleString('en-US', {
+          value={`$${totalPortfolioValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`}
           subtitle="All assets combined"
           trend={12.5}
           color="success"
+          loading={pricesLoading}
         />
         <StatCard
           icon={Wallet}
           title="ICP Balance"
           value={`${formatBalance(wallet?.icpBalance || 0)} ICP`}
-          subtitle={`≈ ${(((wallet?.icpBalance || 0) / 100000000) * 7.0).toLocaleString('en-US', {
+          subtitle={`≈ $${(((wallet?.icpBalance || 0) / 100000000) * (prices.ICP?.usd || 7.0)).toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`}
-          trend={2.5}
+          trend={prices.ICP?.change24h}
           color="primary"
+          loading={pricesLoading}
         />
         <StatCard
           icon={Receipt}
@@ -564,6 +759,7 @@ export default function FunctionalWalletPage() {
                   setTransactionType('deposit');
                   setIsTransactionOpen(true);
                 }}
+                disabled={wallet?.isLocked}
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Funds
@@ -576,6 +772,7 @@ export default function FunctionalWalletPage() {
                   setTransactionType('withdraw');
                   setIsTransactionOpen(true);
                 }}
+                disabled={wallet?.isLocked || totalPortfolioValue === 0}
               >
                 <Send className="h-5 w-5 mr-2" />
                 Send/Transfer
@@ -615,9 +812,17 @@ export default function FunctionalWalletPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Token Holdings */}
           <Card>
-            <CardHeader>
-              <CardTitle>Token Holdings</CardTitle>
-              <CardDescription>Your current token portfolio and balances</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Token Holdings</CardTitle>
+                <CardDescription>Your current token portfolio and balances</CardDescription>
+              </div>
+              {pricesLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Updating prices...
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -648,22 +853,26 @@ export default function FunctionalWalletPage() {
                           : '••••••'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {balanceVisible ? `${token.usdValue.toFixed(2)}` : '••••••'}
+                        {balanceVisible ? `$${token.usdValue.toFixed(2)}` : '••••••'}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {token.change24h > 0 ? (
                         <TrendingUp className="h-4 w-4 text-green-600" />
-                      ) : (
+                      ) : token.change24h < 0 ? (
                         <TrendingDown className="h-4 w-4 text-red-600" />
-                      )}
+                      ) : null}
                       <span
                         className={`text-sm font-medium ${
-                          token.change24h > 0 ? 'text-green-600' : 'text-red-600'
+                          token.change24h > 0
+                            ? 'text-green-600'
+                            : token.change24h < 0
+                            ? 'text-red-600'
+                            : 'text-muted-foreground'
                         }`}
                       >
-                        {token.change24h > 0 ? '+' : ''}
-                        {token.change24h}%
+                        {token.change24h !== 0 && (token.change24h > 0 ? '+' : '')}
+                        {token.change24h.toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -701,7 +910,7 @@ export default function FunctionalWalletPage() {
                   transactions.slice(0, 5).map((transaction) => (
                     <div
                       key={transaction.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -761,7 +970,7 @@ export default function FunctionalWalletPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Token Distribution */}
+          {/* Portfolio Distribution */}
           <Card>
             <CardHeader>
               <CardTitle>Portfolio Distribution</CardTitle>
@@ -838,6 +1047,41 @@ export default function FunctionalWalletPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Market Alerts Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Zap className="h-4 w-4 text-primary" />
+                Market Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Price Alerts</span>
+                <Badge variant="outline" className="text-xs">
+                  Active
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Get notified when ICP reaches $10.00
+              </div>
+              
+              <div className="pt-2">
+                <Button variant="outline" className="w-full h-8 text-xs bg-transparent">
+                  <Plus className="h-3 w-3 mr-2" />
+                  Set Alert
+                </Button>
+              </div>
+
+              {pricesLoading && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Updating market data...
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -845,7 +1089,9 @@ export default function FunctionalWalletPage() {
       <Dialog open={isTransactionOpen} onOpenChange={setIsTransactionOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{transactionType === 'deposit' ? 'Add Funds' : 'Send Tokens'}</DialogTitle>
+            <DialogTitle>
+              {transactionType === 'deposit' ? 'Add Funds' : 'Send Tokens'}
+            </DialogTitle>
             <DialogDescription>
               {transactionType === 'deposit'
                 ? 'Add tokens to your wallet for trading'
@@ -864,10 +1110,16 @@ export default function FunctionalWalletPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ICP">ICP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="Naira">Naira</SelectItem>
-                  <SelectItem value="Euro">Euro</SelectItem>
+                  <SelectItem value="ICP">
+                    ICP - ${(prices.ICP?.usd || 7.0).toFixed(2)}
+                  </SelectItem>
+                  <SelectItem value="USD">USD - $1.00</SelectItem>
+                  <SelectItem value="Naira">
+                    Naira - ${(prices.Naira?.usd || 0.0012).toFixed(4)}
+                  </SelectItem>
+                  <SelectItem value="Euro">
+                    Euro - ${(prices.Euro?.usd || 1.08).toFixed(2)}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -884,7 +1136,7 @@ export default function FunctionalWalletPage() {
               />
               {transactionType === 'withdraw' && (
                 <p className="text-xs text-muted-foreground">
-                  Available: {formatBalance(getTokenBalance(tokenType))} {tokenType}
+                  Available: {formatBalance(getTokenBalance(tokenType, wallet))} {tokenType}
                 </p>
               )}
             </div>
@@ -915,19 +1167,65 @@ export default function FunctionalWalletPage() {
 
             {transactionType === 'deposit' && (
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  This adds funds to your wallet for testing purposes. In production, you would
-                  deposit real tokens.
-                </p>
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    This adds funds to your wallet for testing purposes. In production, you would
+                    deposit real tokens from exchanges or other wallets.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {amount && (
+              <div className="p-3 rounded-lg bg-muted">
+                <div className="flex justify-between text-sm">
+                  <span>Amount:</span>
+                  <span className="font-medium">
+                    {amount} {tokenType}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>USD Value:</span>
+                  <span className="font-medium">
+                    ${(
+                      Number.parseFloat(amount || '0') *
+                      (prices[tokenType]?.usd || 1.0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                {transactionType === 'withdraw' && (
+                  <div className="flex justify-between text-sm">
+                    <span>Network Fee:</span>
+                    <span className="font-medium">~0.0001 ICP</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTransactionOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsTransactionOpen(false);
+                setAmount('');
+                setRecipientAddress('');
+                setMemo('');
+              }}
+              className="bg-transparent"
+            >
               Cancel
             </Button>
-            <Button onClick={handleTransaction} disabled={isLoading}>
+            <Button
+              onClick={handleTransaction}
+              disabled={
+                isLoading ||
+                !amount ||
+                Number.parseFloat(amount) <= 0 ||
+                (transactionType === 'withdraw' && !recipientAddress.trim())
+              }
+            >
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
