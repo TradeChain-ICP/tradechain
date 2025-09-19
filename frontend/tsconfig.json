@@ -9,7 +9,9 @@
     "target": "ES6",
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
+    // "noUncheckedIndexedAccess": false,
+    // Or reduce strictness overall
+    // "exactOptionalPropertyTypes": false,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

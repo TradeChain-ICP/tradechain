@@ -15,6 +15,8 @@ import {
   CheckCircle,
   Shield,
   X,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +36,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-context';
 import { useContentPadding } from '@/contexts/sidebar-context';
 import { useRouter } from 'next/navigation';
+
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 interface KYCFormData {
   firstName: string;
@@ -59,14 +63,27 @@ interface KYCFormData {
     selfie: string | null;
     proofOfAddress: string | null;
   };
+  uploadStatus: {
+    idFront: UploadStatus;
+    idBack: UploadStatus;
+    selfie: UploadStatus;
+    proofOfAddress: UploadStatus;
+  };
+  uploadErrors: {
+    idFront: string | null;
+    idBack: string | null;
+    selfie: string | null;
+    proofOfAddress: string | null;
+  };
   termsAccepted: boolean;
   dataProcessingAccepted: boolean;
 }
 
-export default function KYCVerificationPage() {
+export default function KYCVerificationPageFixed() {
   const { toast } = useToast();
   const { contentPadding } = useContentPadding();
-  const { user, updateKYCStatus, uploadKYCDocument, submitKYCForReview, getUserDocuments } = useAuth();
+  const { user, updateKYCStatus, uploadKYCDocument, submitKYCForReview, getUserDocuments } =
+    useAuth();
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -100,6 +117,18 @@ export default function KYCVerificationPage() {
       selfie: null,
       proofOfAddress: null,
     },
+    uploadStatus: {
+      idFront: 'idle',
+      idBack: 'idle',
+      selfie: 'idle',
+      proofOfAddress: 'idle',
+    },
+    uploadErrors: {
+      idFront: null,
+      idBack: null,
+      selfie: null,
+      proofOfAddress: null,
+    },
     termsAccepted: false,
     dataProcessingAccepted: false,
   });
@@ -116,7 +145,7 @@ export default function KYCVerificationPage() {
     }
 
     if (user) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         firstName: user.firstName || prev.firstName,
         lastName: user.lastName || prev.lastName,
@@ -130,34 +159,59 @@ export default function KYCVerificationPage() {
 
   const loadExistingDocuments = async () => {
     try {
+      console.log('Loading existing documents...');
       const docs = await getUserDocuments();
+      console.log('Retrieved documents:', docs);
+
       const uploadedDocs = {
-        idFront: null,
-        idBack: null,
-        selfie: null,
-        proofOfAddress: null,
+        idFront: null as string | null,
+        idBack: null as string | null,
+        selfie: null as string | null,
+        proofOfAddress: null as string | null,
+      };
+
+      const uploadStatus = {
+        idFront: 'idle' as UploadStatus,
+        idBack: 'idle' as UploadStatus,
+        selfie: 'idle' as UploadStatus,
+        proofOfAddress: 'idle' as UploadStatus,
       };
 
       docs.forEach((doc) => {
+        console.log('Processing document:', doc.docType, doc.id);
         switch (doc.docType) {
           case 'idFront':
             uploadedDocs.idFront = doc.id;
+            uploadStatus.idFront = 'success';
             break;
           case 'idBack':
             uploadedDocs.idBack = doc.id;
+            uploadStatus.idBack = 'success';
             break;
           case 'selfie':
             uploadedDocs.selfie = doc.id;
+            uploadStatus.selfie = 'success';
             break;
           case 'proofOfAddress':
             uploadedDocs.proofOfAddress = doc.id;
+            uploadStatus.proofOfAddress = 'success';
             break;
         }
       });
 
-      setFormData(prev => ({ ...prev, uploadedDocs }));
+      setFormData((prev) => ({
+        ...prev,
+        uploadedDocs,
+        uploadStatus,
+      }));
+      console.log('Documents loaded successfully');
     } catch (error) {
       console.error('Failed to load existing documents:', error);
+      toast({
+        title: 'Load Error',
+        description: 'Failed to load existing documents. Please refresh the page.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -215,10 +269,10 @@ export default function KYCVerificationPage() {
     const errors: Record<string, string> = {};
 
     if (!formData.idType) errors.idType = 'Please select an ID type';
-    
-    const requiredDocs = ['idFront', 'idBack', 'selfie', 'proofOfAddress'];
-    requiredDocs.forEach(doc => {
-      if (!formData.uploadedDocs[doc as keyof typeof formData.uploadedDocs]) {
+
+    const requiredDocs = ['idFront', 'idBack', 'selfie', 'proofOfAddress'] as const;
+    requiredDocs.forEach((doc) => {
+      if (formData.uploadStatus[doc] !== 'success') {
         errors[doc] = `Please upload ${doc.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
       }
     });
@@ -266,17 +320,29 @@ export default function KYCVerificationPage() {
     setValidationErrors({});
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    docType: string
-  ) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, docType: string) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log('Starting file upload for:', docType, 'File:', file.name, 'Size:', file.size);
+
+    // Reset previous error
+    setFormData((prev) => ({
+      ...prev,
+      uploadErrors: { ...prev.uploadErrors, [docType]: null },
+    }));
+
+    // Validation
     if (file.size > 10 * 1024 * 1024) {
+      const error = 'File too large. Maximum size is 10MB.';
+      setFormData((prev) => ({
+        ...prev,
+        uploadStatus: { ...prev.uploadStatus, [docType]: 'error' as UploadStatus },
+        uploadErrors: { ...prev.uploadErrors, [docType]: error },
+      }));
       toast({
         title: 'File Too Large',
-        description: 'Please select a file smaller than 10MB.',
+        description: error,
         variant: 'destructive',
       });
       return;
@@ -284,49 +350,67 @@ export default function KYCVerificationPage() {
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
+      const error = 'Invalid file type. Only JPG, PNG, and PDF files are allowed.';
+      setFormData((prev) => ({
+        ...prev,
+        uploadStatus: { ...prev.uploadStatus, [docType]: 'error' as UploadStatus },
+        uploadErrors: { ...prev.uploadErrors, [docType]: error },
+      }));
       toast({
         title: 'Invalid File Type',
-        description: 'Please upload JPG, PNG, or PDF files only.',
+        description: error,
         variant: 'destructive',
       });
       return;
     }
 
-    setIsLoading(true);
+    // Set uploading state
+    setFormData((prev) => ({
+      ...prev,
+      uploadStatus: { ...prev.uploadStatus, [docType]: 'uploading' as UploadStatus },
+      documents: { ...prev.documents, [docType]: file },
+    }));
+
+    // Start progress animation
     setUploadProgress({ ...uploadProgress, [docType]: 0 });
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        const currentProgress = prev[docType] || 0;
+        if (currentProgress >= 90) {
+          clearInterval(progressInterval);
+          return prev;
+        }
+        return { ...prev, [docType]: currentProgress + 10 };
+      });
+    }, 200);
 
     try {
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const currentProgress = prev[docType] || 0;
-          if (currentProgress >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return { ...prev, [docType]: currentProgress + 10 };
-        });
-      }, 200);
-
-      // Upload document using the actual backend method
+      console.log('Calling uploadKYCDocument...');
       const documentId = await uploadKYCDocument({
         docType: docType,
         fileName: file.name,
         file: file,
       });
 
-      clearInterval(progressInterval);
-      setUploadProgress({ ...uploadProgress, [docType]: 100 });
+      console.log('Upload successful, document ID:', documentId);
 
-      setFormData(prev => ({
+      // Clear progress and set success
+      clearInterval(progressInterval);
+      setUploadProgress((prev) => {
+        const newProgress = { ...prev };
+        delete newProgress[docType];
+        return newProgress;
+      });
+
+      setFormData((prev) => ({
         ...prev,
-        documents: { ...prev.documents, [docType]: file },
         uploadedDocs: { ...prev.uploadedDocs, [docType]: documentId },
+        uploadStatus: { ...prev.uploadStatus, [docType]: 'success' as UploadStatus },
       }));
 
-      // Clear error for this field
+      // Clear validation error for this field
       if (validationErrors[docType]) {
-        setValidationErrors(prev => {
+        setValidationErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[docType];
           return newErrors;
@@ -334,25 +418,31 @@ export default function KYCVerificationPage() {
       }
 
       toast({
-        title: 'Document Uploaded',
-        description: `Your ${docType.replace(/([A-Z])/g, ' $1').toLowerCase()} has been uploaded successfully.`,
+        title: 'Upload Successful',
+        description: `${docType.replace(/([A-Z])/g, ' $1')} has been uploaded successfully.`,
       });
-    } catch (error) {
-      console.error('Document upload error:', error);
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+
+      clearInterval(progressInterval);
+      setUploadProgress((prev) => {
+        const newProgress = { ...prev };
+        delete newProgress[docType];
+        return newProgress;
+      });
+
+      const errorMessage = error.message || 'Upload failed. Please try again.';
+      setFormData((prev) => ({
+        ...prev,
+        uploadStatus: { ...prev.uploadStatus, [docType]: 'error' as UploadStatus },
+        uploadErrors: { ...prev.uploadErrors, [docType]: errorMessage },
+      }));
+
       toast({
         title: 'Upload Failed',
-        description: 'Failed to upload document. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[docType];
-          return newProgress;
-        });
-      }, 2000);
     }
   };
 
@@ -368,19 +458,22 @@ export default function KYCVerificationPage() {
 
     setIsSubmitting(true);
     try {
+      console.log('Submitting KYC for review...');
       await submitKYCForReview();
 
       toast({
         title: 'KYC Verification Submitted',
-        description: "Your verification is being processed. You will be notified once it's complete.",
+        description:
+          "Your verification is being processed. You will be notified once it's complete.",
       });
 
       router.push('/dashboard/kyc/submitted');
-    } catch (error) {
+    } catch (error: any) {
       console.error('KYC submission error:', error);
       toast({
         title: 'Submission Failed',
-        description: 'There was an error submitting your verification. Please try again.',
+        description:
+          error.message || 'There was an error submitting your verification. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -389,10 +482,10 @@ export default function KYCVerificationPage() {
   };
 
   const updateFormData = (field: keyof KYCFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (validationErrors[field]) {
-      setValidationErrors(prev => {
+      setValidationErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
@@ -404,39 +497,49 @@ export default function KYCVerificationPage() {
     title,
     description,
     docType,
-    uploaded,
+    status,
     icon: Icon,
     error,
   }: {
     title: string;
     description: string;
     docType: string;
-    uploaded: boolean;
+    status: 'idle' | 'uploading' | 'success' | 'error';
     icon: any;
-    error?: string;
+    error?: string | null;
   }) => (
-    <Card className={`border-2 transition-all ${uploaded ? 'border-green-200 bg-green-50/50' : error ? 'border-red-200 bg-red-50/50' : 'border-dashed border-muted-foreground/25'}`}>
+    <Card
+      className={`border-2 transition-all ${
+        status === 'success'
+          ? 'border-green-200 bg-green-50/50 dark:bg-green-950/50'
+          : status === 'error'
+          ? 'border-red-200 bg-red-50/50 dark:bg-red-950/50'
+          : status === 'uploading'
+          ? 'border-blue-200 bg-blue-50/50 dark:bg-blue-950/50'
+          : 'border-dashed border-muted-foreground/25'
+      }`}
+    >
       <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
-        {uploadProgress[docType] !== undefined ? (
+        {status === 'uploading' ? (
           <>
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
             </div>
             <div className="w-full space-y-2">
-              <Progress value={uploadProgress[docType]} className="h-2" />
+              <Progress value={uploadProgress[docType] || 0} className="h-2" />
               <p className="text-sm text-center text-blue-600">
-                Uploading... {uploadProgress[docType]}%
+                Uploading... {uploadProgress[docType] || 0}%
               </p>
             </div>
           </>
-        ) : uploaded ? (
+        ) : status === 'success' ? (
           <>
-            <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+            <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <div className="text-center">
-              <p className="font-medium">{title}</p>
-              <p className="text-sm text-green-600">Successfully uploaded</p>
+              <p className="font-medium text-green-700 dark:text-green-300">{title}</p>
+              <p className="text-sm text-green-600 dark:text-green-400">Successfully uploaded</p>
             </div>
             <input
               type="file"
@@ -449,20 +552,48 @@ export default function KYCVerificationPage() {
               variant="outline"
               onClick={() => document.getElementById(`${docType}-replace`)?.click()}
               className="w-full"
-              disabled={isLoading}
+              // @ts-ignore - TypeScript comparison issue with literal types
+              disabled={status === 'uploading'}
             >
               Replace Document
             </Button>
           </>
+        ) : status === 'error' ? (
+          <>
+            <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <div className="text-center">
+              <p className="font-medium text-red-700 dark:text-red-300">{title}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">Upload failed</p>
+              {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+            </div>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              onChange={(e) => handleFileUpload(e, docType)}
+              className="hidden"
+              id={`${docType}-retry`}
+            />
+            <Button
+              variant="outline"
+              onClick={() => document.getElementById(`${docType}-retry`)?.click()}
+              className="w-full border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+              // @ts-ignore - TypeScript comparison issue with literal types
+              disabled={status === 'uploading'}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </>
         ) : (
           <>
-            <div className={`h-16 w-16 rounded-full flex items-center justify-center ${error ? 'bg-red-100' : 'bg-muted'}`}>
-              <Icon className={`h-8 w-8 ${error ? 'text-red-600' : 'text-muted-foreground'}`} />
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+              <Icon className="h-8 w-8 text-muted-foreground" />
             </div>
             <div className="text-center">
               <p className="font-medium">{title}</p>
               <p className="text-sm text-muted-foreground">{description}</p>
-              {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
             </div>
             <input
               type="file"
@@ -474,7 +605,8 @@ export default function KYCVerificationPage() {
             <Button
               variant="outline"
               onClick={() => document.getElementById(docType)?.click()}
-              disabled={isLoading}
+              // @ts-ignore - TypeScript comparison issue with literal types
+              disabled={status === 'uploading'}
               className="w-full"
             >
               <Upload className="h-4 w-4 mr-2" />
@@ -583,7 +715,11 @@ export default function KYCVerificationPage() {
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                  max={
+                    new Date(new Date().setFullYear(new Date().getFullYear() - 18))
+                      .toISOString()
+                      .split('T')[0]
+                  }
                   className={validationErrors.dateOfBirth ? 'border-red-500' : ''}
                 />
                 {validationErrors.dateOfBirth && (
@@ -754,18 +890,18 @@ export default function KYCVerificationPage() {
                   title="ID Front Side"
                   description="Upload the front of your ID"
                   docType="idFront"
-                  uploaded={!!formData.uploadedDocs.idFront}
+                  status={formData.uploadStatus.idFront}
                   icon={FileText}
-                  error={validationErrors.idFront}
+                  error={formData.uploadErrors.idFront}
                 />
 
                 <DocumentUploadCard
                   title="ID Back Side"
                   description="Upload the back of your ID"
                   docType="idBack"
-                  uploaded={!!formData.uploadedDocs.idBack}
+                  status={formData.uploadStatus.idBack}
                   icon={FileText}
-                  error={validationErrors.idBack}
+                  error={formData.uploadErrors.idBack}
                 />
               </div>
 
@@ -774,28 +910,63 @@ export default function KYCVerificationPage() {
                   title="Selfie with ID"
                   description="Photo of yourself holding your ID"
                   docType="selfie"
-                  uploaded={!!formData.uploadedDocs.selfie}
+                  status={formData.uploadStatus.selfie}
                   icon={Camera}
-                  error={validationErrors.selfie}
+                  error={formData.uploadErrors.selfie}
                 />
 
                 <DocumentUploadCard
                   title="Proof of Address"
                   description="Utility bill or bank statement"
                   docType="proofOfAddress"
-                  uploaded={!!formData.uploadedDocs.proofOfAddress}
+                  status={formData.uploadStatus.proofOfAddress}
                   icon={FileText}
-                  error={validationErrors.proofOfAddress}
+                  error={formData.uploadErrors.proofOfAddress}
                 />
               </div>
 
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Requirements:</strong> All documents must be clear and readable. 
-                  Accepted formats: JPG, PNG, PDF (max 10MB each).
+                  <strong>Requirements:</strong> All documents must be clear and readable. Accepted
+                  formats: JPG, PNG, PDF (max 10MB each).
                 </AlertDescription>
               </Alert>
+
+              {/* Upload Status Summary */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-3">Upload Status</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {Object.entries(formData.uploadStatus).map(([docType, status]) => (
+                    <div key={docType} className="flex items-center gap-2">
+                      {status === 'success' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : status === 'error' ? (
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      ) : status === 'uploading' ? (
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/25" />
+                      )}
+                      <span className="capitalize">{docType.replace(/([A-Z])/g, ' $1')}</span>
+                      <Badge
+                        variant={
+                          status === 'success'
+                            ? 'default'
+                            : status === 'error'
+                            ? 'destructive'
+                            : status === 'uploading'
+                            ? 'secondary'
+                            : 'outline'
+                        }
+                        className="text-xs"
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -814,7 +985,9 @@ export default function KYCVerificationPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Name:</span>
-                    <div>{formData.firstName} {formData.lastName}</div>
+                    <div>
+                      {formData.firstName} {formData.lastName}
+                    </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Date of Birth:</span>
@@ -832,24 +1005,45 @@ export default function KYCVerificationPage() {
               </div>
 
               <div className="space-y-4 border rounded-lg p-4">
+                <h4 className="font-medium">Contact Information</h4>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Address:</span>
+                    <div>{formData.address}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">City, State:</span>
+                    <div>
+                      {formData.city}
+                      {formData.state ? `, ${formData.state}` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Postal Code:</span>
+                    <div>{formData.postalCode}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 border rounded-lg p-4">
                 <h4 className="font-medium">Documents Uploaded</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>ID Front Side</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>ID Back Side</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Selfie with ID</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Proof of Address</span>
-                  </div>
+                  {Object.entries(formData.uploadStatus).map(([docType, status]) => (
+                    <div key={docType} className="flex items-center gap-2">
+                      {status === 'success' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      )}
+                      <span className="capitalize">{docType.replace(/([A-Z])/g, ' $1')}</span>
+                      <Badge
+                        variant={status === 'success' ? 'default' : 'destructive'}
+                        className="text-xs"
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -880,6 +1074,16 @@ export default function KYCVerificationPage() {
                   </label>
                 </div>
               </div>
+
+              {/* Pre-submission validation alert */}
+              {Object.values(formData.uploadStatus).some((status) => status !== 'success') && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Please ensure all documents are successfully uploaded before submitting.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </CardContent>
@@ -900,10 +1104,7 @@ export default function KYCVerificationPage() {
           )}
 
           {currentStep < 4 ? (
-            <Button
-              onClick={handleNextStep}
-              disabled={isLoading || isSubmitting}
-            >
+            <Button onClick={handleNextStep} disabled={isLoading || isSubmitting}>
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -914,12 +1115,13 @@ export default function KYCVerificationPage() {
                 isLoading ||
                 isSubmitting ||
                 !formData.termsAccepted ||
-                !formData.dataProcessingAccepted
+                !formData.dataProcessingAccepted ||
+                Object.values(formData.uploadStatus).some((status) => status !== 'success')
               }
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...
                 </>
               ) : (
@@ -932,6 +1134,39 @@ export default function KYCVerificationPage() {
           )}
         </CardFooter>
       </Card>
+
+      {/* Debug Panel (remove in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="max-w-4xl mx-auto mt-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800">
+          <CardHeader>
+            <CardTitle className="text-sm text-yellow-800 dark:text-yellow-200">
+              Debug Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="space-y-2">
+              <div>
+                <strong>Upload Status:</strong>
+                <pre className="mt-1 text-xs bg-white dark:bg-black p-2 rounded">
+                  {JSON.stringify(formData.uploadStatus, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <strong>Upload Errors:</strong>
+                <pre className="mt-1 text-xs bg-white dark:bg-black p-2 rounded">
+                  {JSON.stringify(formData.uploadErrors, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <strong>Uploaded Docs:</strong>
+                <pre className="mt-1 text-xs bg-white dark:bg-black p-2 rounded">
+                  {JSON.stringify(formData.uploadedDocs, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
