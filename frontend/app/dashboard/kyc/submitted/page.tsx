@@ -19,15 +19,36 @@ export default function KYCSubmittedPage() {
   const [progress, setProgress] = useState(0);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
 
+  // FIXED: Separate effect for routing decisions
   useEffect(() => {
-    // Redirect if user hasn't submitted KYC
-    if (user && user.kycStatus !== 'inReview') {
-      if (user.kycStatus === 'completed') {
-        router.push('/dashboard/profile');
-      } else {
-        router.push('/dashboard/kyc');
-      }
+    if (!user) return;
+
+    // Check if user should be redirected based on KYC status
+    if (user.kycStatus === 'completed') {
+      setShouldRedirect('/dashboard/profile');
+    } else if (user.kycStatus !== 'inReview') {
+      setShouldRedirect('/dashboard/kyc');
+    }
+  }, [user]);
+
+  // FIXED: Separate effect for actual navigation
+  useEffect(() => {
+    if (shouldRedirect) {
+      // Use setTimeout to prevent "setState during render" error
+      const redirectTimer = setTimeout(() => {
+        router.push(shouldRedirect);
+      }, 100);
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [shouldRedirect, router]);
+
+  // Animation and auto-redirect effects
+  useEffect(() => {
+    // Only run animations if we're staying on this page
+    if (shouldRedirect || !user || user.kycStatus !== 'inReview') {
       return;
     }
 
@@ -35,25 +56,43 @@ export default function KYCSubmittedPage() {
     const checkmarkTimer = setTimeout(() => setShowCheckmark(true), 300);
     const progressTimer = setTimeout(() => setProgress(100), 800);
 
-    // Auto redirect countdown
-    const redirectTimer = setInterval(() => {
+    // Auto redirect countdown (only if staying on page)
+    const countdownInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          clearInterval(redirectTimer);
+          clearInterval(countdownInterval);
           const dashboardPath = user?.role ? `/dashboard/${user.role}` : '/dashboard';
           router.push(dashboardPath);
           return 0;
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 1000); // Changed from 3000 to 1000 for proper 1-second countdown
 
     return () => {
       clearTimeout(checkmarkTimer);
       clearTimeout(progressTimer);
-      clearInterval(redirectTimer);
+      clearInterval(countdownInterval);
     };
-  }, [user, router]);
+  }, [user, router, shouldRedirect]);
+
+  // Don't render anything if we're redirecting
+  if (shouldRedirect) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Don't render if user data isn't loaded yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const getDashboardPath = () => {
     return user?.role ? `/dashboard/${user.role}` : '/dashboard';

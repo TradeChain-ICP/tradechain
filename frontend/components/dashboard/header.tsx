@@ -14,6 +14,10 @@ import {
   X,
   UserCircle,
   ShoppingCart,
+  Shield,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,6 +149,44 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
     }
   };
 
+  // KYC Status Helper Functions
+  const getKYCStatus = () => {
+    if (!user) return null;
+    
+    switch (user.kycStatus) {
+      case 'pending':
+        return {
+          icon: <AlertTriangle className="h-3 w-3" />,
+          text: 'Verify Account',
+          variant: 'destructive' as const,
+          href: '/dashboard/kyc',
+          pulse: true,
+        };
+      case 'inReview':
+        return {
+          icon: <Clock className="h-3 w-3" />,
+          text: 'Under Review',
+          variant: 'secondary' as const,
+          href: '/dashboard/kyc/submitted',
+          pulse: false,
+        };
+      case 'rejected':
+        return {
+          icon: <AlertTriangle className="h-3 w-3" />,
+          text: 'Action Needed',
+          variant: 'destructive' as const,
+          href: '/dashboard/kyc',
+          pulse: true,
+        };
+      case 'completed':
+        return null; // Don't show anything for completed
+      default:
+        return null;
+    }
+  };
+
+  const kycStatus = getKYCStatus();
+
   const currentTheme = mounted ? resolvedTheme : 'light';
 
   return (
@@ -230,6 +272,27 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
             </Button>
           </div>
 
+          {/* KYC Status Button - Insert between search and cart */}
+          {kycStatus && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-10 gap-2 rounded-xl hover:bg-primary/10 transition-all duration-200",
+                "hidden sm:flex", // Hide on mobile to save space
+                kycStatus.pulse && "animate-pulse"
+              )}
+              asChild
+            >
+              <Link href={kycStatus.href}>
+                <Shield className="h-4 w-4" />
+                <Badge variant={kycStatus.variant} className="text-xs">
+                  {kycStatus.text}
+                </Badge>
+              </Link>
+            </Button>
+          )}
+
           {/* Shopping Cart - Only for buyers */}
           {user?.role === 'buyer' && (
             <Button
@@ -310,16 +373,43 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                         <Badge variant="secondary" className="text-xs px-2 py-0 capitalize">
                           {user?.role}
                         </Badge>
-                        {user?.verified && (
+                        {user?.verified ? (
                           <Badge variant="outline" className="text-xs px-2 py-0">
                             Verified
                           </Badge>
+                        ) : (
+                          kycStatus && (
+                            <Badge variant={kycStatus.variant} className="text-xs px-2 py-0">
+                              {kycStatus.text}
+                            </Badge>
+                          )
                         )}
                         <div className="w-2 h-2 bg-green-500 rounded-full" title="Online" />
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* KYC Status in Mobile Menu */}
+                {kycStatus && (
+                  <div className="sm:hidden px-4 py-2 border-b">
+                    <Link
+                      href={kycStatus.href}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      onClick={() => setIsProfileOpen(false)}
+                    >
+                      <div className={cn("flex items-center justify-center w-8 h-8 rounded-full", 
+                        kycStatus.variant === 'destructive' ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+                      )}>
+                        {kycStatus.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Account Verification</p>
+                        <p className="text-xs text-muted-foreground">{kycStatus.text}</p>
+                      </div>
+                    </Link>
+                  </div>
+                )}
 
                 {/* Menu Items */}
                 <div className="py-2">
