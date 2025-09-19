@@ -35,6 +35,9 @@ next-env.d.ts
 .vessel/
 **/.vessel/
 
+.mops/
+**/.mops/
+
 # Node modules
 node_modules/
 **/node_modules/

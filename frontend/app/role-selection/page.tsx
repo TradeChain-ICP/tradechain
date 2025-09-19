@@ -4,21 +4,21 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  ShoppingCart, 
-  Store, 
-  Upload, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Building, 
-  Globe, 
-  FileText, 
+import {
+  ArrowRight,
+  ArrowLeft,
+  ShoppingCart,
+  Store,
+  Upload,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Building,
+  Globe,
+  FileText,
   CheckCircle,
-  Camera
+  Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,7 +47,7 @@ interface ProfileFormData {
 
 export default function OptimizedRoleSelectionPage() {
   const { toast } = useToast();
-  const { setUserRole } = useAuth();
+  const { user, registerUser, setUserRole } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,13 +55,14 @@ export default function OptimizedRoleSelectionPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [needsRegistration, setNeedsRegistration] = useState(!user);
 
   const [formData, setFormData] = useState<ProfileFormData>({
     role: null,
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
     bio: '',
     location: '',
     company: '',
@@ -74,10 +75,18 @@ export default function OptimizedRoleSelectionPage() {
 
   const steps = [
     { id: 1, title: 'Choose Role', description: 'Select your role on TradeChain' },
-    { id: 2, title: 'Personal Info', description: 'Tell us about yourself' },
-    { id: 3, title: 'Profile Details', description: 'Complete your profile' },
-    { id: 4, title: 'Complete', description: 'All done!' },
+    ...(needsRegistration
+      ? [{ id: 2, title: 'Personal Info', description: 'Tell us about yourself' }]
+      : []),
+    {
+      id: needsRegistration ? 3 : 2,
+      title: 'Profile Details',
+      description: 'Complete your profile',
+    },
+    { id: needsRegistration ? 4 : 3, title: 'Complete', description: 'All done!' },
   ];
+
+  const totalSteps = needsRegistration ? 3 : 2;
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
@@ -89,24 +98,36 @@ export default function OptimizedRoleSelectionPage() {
         }
         break;
       case 2:
-        if (!formData.firstName.trim()) {
-          newErrors.firstName = 'First name is required';
-        }
-        if (!formData.lastName.trim()) {
-          newErrors.lastName = 'Last name is required';
-        }
-        if (!formData.email.trim()) {
-          newErrors.email = 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-          newErrors.email = 'Please enter a valid email';
+        if (needsRegistration) {
+          if (!formData.firstName.trim()) {
+            newErrors.firstName = 'First name is required';
+          }
+          if (!formData.lastName.trim()) {
+            newErrors.lastName = 'Last name is required';
+          }
+          if (!formData.email.trim()) {
+            newErrors.email = 'Email is required';
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = 'Please enter a valid email';
+          }
         }
         break;
       case 3:
-        if (!formData.location.trim()) {
-          newErrors.location = 'Location is required';
-        }
-        if (formData.role === 'seller' && !formData.company.trim()) {
-          newErrors.company = 'Company name is required for sellers';
+        if (needsRegistration) {
+          if (!formData.location.trim()) {
+            newErrors.location = 'Location is required';
+          }
+          if (formData.role === 'seller' && !formData.company.trim()) {
+            newErrors.company = 'Company name is required for sellers';
+          }
+        } else {
+          // For existing users, step 2 is profile details
+          if (!formData.location.trim()) {
+            newErrors.location = 'Location is required';
+          }
+          if (formData.role === 'seller' && !formData.company.trim()) {
+            newErrors.company = 'Company name is required for sellers';
+          }
         }
         break;
     }
@@ -117,7 +138,7 @@ export default function OptimizedRoleSelectionPage() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      if (currentStep < 3) {
+      if (currentStep < totalSteps) {
         setCurrentStep(currentStep + 1);
       } else {
         handleSubmit();
@@ -136,7 +157,6 @@ export default function OptimizedRoleSelectionPage() {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         toast({
           title: 'File Too Large',
           description: 'Please select an image smaller than 5MB.',
@@ -162,22 +182,57 @@ export default function OptimizedRoleSelectionPage() {
 
     setIsLoading(true);
     try {
-      // Convert profile picture to blob if exists
-      let profilePictureBlob: ArrayBuffer | null = null;
-      if (formData.profilePicture) {
-        profilePictureBlob = await formData.profilePicture.arrayBuffer();
+      console.log('🚀 Starting profile setup process...');
+      console.log('📋 Form data:', {
+        ...formData,
+        profilePicture: formData.profilePicture ? 'File present' : 'No file',
+      });
+      
+      // Step 1: Register user if needed
+      if (needsRegistration) {
+        console.log('📝 Registering new user...');
+        
+        // FIXED: Properly detect auth method from current session
+        // Instead of hardcoding, we should detect the actual auth method used
+        let authMethod: 'nfid' | 'internet-identity' = 'internet-identity';
+        
+        // Try to detect auth method from the ICP agent or user context
+        if (user?.authMethod) {
+          authMethod = user.authMethod;
+        } else {
+          // Fallback: detect from URL or identity provider
+          const currentUrl = window.location.href;
+          if (currentUrl.includes('nfid') || localStorage.getItem('ic-delegation')?.includes('nfid')) {
+            authMethod = 'nfid';
+          }
+        }
+        
+        console.log('🔐 Detected auth method:', authMethod);
+        
+        await registerUser({
+          authMethod: authMethod,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          profilePicture: formData.profilePicture || undefined,
+        });
+        console.log('✅ User registration completed');
       }
 
+      // Step 2: Set user role and profile details
+      console.log('👤 Setting user role and profile...');
       await setUserRole({
         role: formData.role,
-        bio: formData.bio,
-        location: formData.location,
-        company: formData.company,
-        website: formData.website,
+        bio: formData.bio || undefined,
+        location: formData.location || undefined,
+        company: formData.company || undefined,
+        website: formData.website || undefined,
       });
 
+      console.log('✅ Role and profile setup completed');
       setIsCompleted(true);
-      setCurrentStep(4);
+      setCurrentStep(totalSteps + 1);
 
       // Start countdown
       const timer = setInterval(() => {
@@ -196,11 +251,11 @@ export default function OptimizedRoleSelectionPage() {
         title: 'Profile Complete!',
         description: `Welcome to TradeChain as a ${formData.role}!`,
       });
-    } catch (error) {
-      console.error('Profile setup error:', error);
+    } catch (error: any) {
+      console.error('❌ Profile setup error:', error);
       toast({
         title: 'Setup Failed',
-        description: 'There was an error setting up your profile. Please try again.',
+        description: error.message || 'There was an error setting up your profile. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -209,12 +264,11 @@ export default function OptimizedRoleSelectionPage() {
   };
 
   const getProgress = () => {
-    return (currentStep / 4) * 100;
+    return (currentStep / (totalSteps + 1)) * 100;
   };
 
   const updateFormData = (field: keyof ProfileFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }));
     }
@@ -248,7 +302,7 @@ export default function OptimizedRoleSelectionPage() {
               </h1>
               {!isCompleted && (
                 <Badge variant="outline" className="text-xs">
-                  Step {currentStep} of 3
+                  Step {currentStep} of {totalSteps}
                 </Badge>
               )}
             </div>
@@ -256,7 +310,7 @@ export default function OptimizedRoleSelectionPage() {
             <Progress value={getProgress()} className="h-2" />
 
             <div className="flex justify-between text-sm text-muted-foreground">
-              {steps.slice(0, 3).map((step, index) => (
+              {steps.slice(0, totalSteps).map((step, index) => (
                 <div
                   key={step.id}
                   className={`flex items-center ${
@@ -351,8 +405,8 @@ export default function OptimizedRoleSelectionPage() {
                 </div>
               )}
 
-              {/* Step 2: Personal Information */}
-              {currentStep === 2 && (
+              {/* Step 2: Personal Information (only for new registrations) */}
+              {currentStep === 2 && needsRegistration && (
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
                     <h2 className="text-xl font-semibold">Personal Information</h2>
@@ -454,8 +508,9 @@ export default function OptimizedRoleSelectionPage() {
                 </div>
               )}
 
-              {/* Step 3: Profile Details */}
-              {currentStep === 3 && (
+              {/* Profile Details Step */}
+              {((currentStep === 3 && needsRegistration) ||
+                (currentStep === 2 && !needsRegistration)) && (
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
                     <h2 className="text-xl font-semibold">Complete Your Profile</h2>
@@ -545,8 +600,8 @@ export default function OptimizedRoleSelectionPage() {
                 </div>
               )}
 
-              {/* Step 4: Completion */}
-              {currentStep === 4 && isCompleted && (
+              {/* Completion Step */}
+              {isCompleted && (
                 <div className="text-center space-y-6">
                   {/* Animated checkmark */}
                   <div className="flex justify-center">
@@ -590,7 +645,7 @@ export default function OptimizedRoleSelectionPage() {
             </CardContent>
 
             {/* Navigation Footer */}
-            {currentStep < 4 && (
+            {!isCompleted && (
               <div className="flex justify-between items-center p-6 pt-0">
                 <Button
                   variant="outline"
@@ -608,7 +663,7 @@ export default function OptimizedRoleSelectionPage() {
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                       Setting up...
                     </div>
-                  ) : currentStep === 3 ? (
+                  ) : currentStep === totalSteps ? (
                     <>
                       Complete Setup
                       <CheckCircle className="ml-2 h-4 w-4" />
@@ -625,7 +680,7 @@ export default function OptimizedRoleSelectionPage() {
           </Card>
 
           {/* Security Notice */}
-          {currentStep < 4 && (
+          {!isCompleted && (
             <div className="text-center text-xs text-muted-foreground max-w-md mx-auto">
               <p>
                 By continuing, you agree to TradeChain's{' '}

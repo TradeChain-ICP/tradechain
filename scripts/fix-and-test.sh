@@ -23,7 +23,7 @@ fi
 
 # 2. Update environment to use mainnet Internet Identity
 echo "🌐 Updating environment to use reliable mainnet Internet Identity..."
-cat > frontend/.env.local << 'EOF'
+cat > frontend/.env.development << 'EOF'
 # Network Configuration
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:4943
@@ -76,12 +76,12 @@ echo ""
 echo "🎯 Testing Options Available:"
 echo ""
 echo "📱 Option 1: Mock Authentication (Guaranteed to work)"
-echo "   - Add NEXT_PUBLIC_ENABLE_MOCK_AUTH=true to frontend/.env.local"
+echo "   - Add NEXT_PUBLIC_ENABLE_MOCK_AUTH=true to frontend/.env.development"
 echo "   - Restart frontend: cd frontend && npm run dev"
 echo "   - Test full user flow without Internet Identity issues"
 echo ""
 echo "🌐 Option 2: Mainnet Internet Identity (Recommended)"
-echo "   - Already configured in your .env.local"
+echo "   - Already configured in your .env.development"
 echo "   - Restart frontend: cd frontend && npm run dev"
 echo "   - Uses reliable mainnet Internet Identity"
 echo "   - Your local canisters still work"
@@ -91,6 +91,6 @@ echo "   - Run: dfx deploy --network ic"
 echo "   - Test with real Internet Identity on testnet"
 echo ""
 echo "✅ Setup complete! Choose your testing option:"
-echo "   Mock Mode:     cd frontend && echo 'NEXT_PUBLIC_ENABLE_MOCK_AUTH=true' >> .env.local && npm run dev"
+echo "   Mock Mode:     cd frontend && echo 'NEXT_PUBLIC_ENABLE_MOCK_AUTH=true' >> .env.development && npm run dev"
 echo "   Mainnet II:    cd frontend && npm run dev"
 echo "   IC Testnet:    dfx deploy --network ic"

@@ -87,17 +87,6 @@ type Transaction = record {
   memo: opt text;
 };
 
-type Document = record {
-  id: text;
-  userId: text;
-  docType: text;
-  fileName: text;
-  content: blob;
-  mimeType: text;
-  uploadedAt: int;
-  verified: bool;
-};
-
 type UserStats = record {
   totalUsers: nat;
   verifiedUsers: nat;
@@ -121,6 +110,11 @@ type HealthCheck = record {
   timestamp: int;
   userCount: nat;
   walletCount: nat;
+};
+
+type MigrationStatus = record {
+  version: nat;
+  isComplete: bool;
 };
 
 type Result_User = variant {
@@ -148,28 +142,14 @@ type Result_Wallet = variant {
   err: text;
 };
 
-type Result_Document = variant {
-  ok: Document;
-  err: text;
-};
-
 service : {
-  // Enhanced user registration and profile management
+  // User registration and profile management
   registerUser: (AuthMethod, text, text, text, opt text, opt blob) -> (Result_User);
   setUserRole: (UserRole, opt text, opt text, opt text, opt text) -> (Result_User);
   getCurrentUser: () -> (Result_User);
   updateProfile: (text, text, text, opt text, opt text, opt text, opt text, opt text) -> (Result_User);
   updateProfilePicture: (blob) -> (Result_User);
-  
-  // KYC and document management
   updateKYCStatus: (KYCStatus) -> (Result_User);
-  uploadKYCDocument: (text, text, blob, text) -> (Result_Text);
-  getUserDocuments: () -> (vec Document) query;
-  submitKYCForReview: () -> (Result_User);
-  getDocument: (text) -> (Result_Document);
-  deleteDocument: (text) -> (Result_Unit);
-  verifyDocument: (text, bool) -> (Result_Unit);
-  getAllDocuments: () -> (vec Document) query;
   
   // Integrated wallet functionality
   getWallet: () -> (Result_Wallet);
@@ -193,4 +173,5 @@ service : {
   getUserStats: () -> (UserStats) query;
   getWalletStats: () -> (WalletStats) query;
   healthCheck: () -> (HealthCheck) query;
+  getMigrationStatus: () -> (MigrationStatus) query;
 }

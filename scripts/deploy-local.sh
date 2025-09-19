@@ -42,7 +42,7 @@ AI_INSIGHTS_ID=$(dfx canister id ai_insights)
 INTERNET_IDENTITY_ID=$(dfx canister id internet_identity)
 
 # Update frontend environment file
-cat > frontend/.env.local << EOF
+cat > frontend/.env.development << EOF
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:4943
 

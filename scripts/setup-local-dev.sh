@@ -85,7 +85,7 @@ INTERNET_IDENTITY_ID=$(dfx canister id internet_identity)
 mkdir -p frontend
 
 # Create environment file
-cat > frontend/.env.local << EOF
+cat > frontend/.env.development << EOF
 # Network Configuration
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:4943

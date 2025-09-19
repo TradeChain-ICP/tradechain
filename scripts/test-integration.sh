@@ -71,11 +71,11 @@ fi
 
 # Check environment file
 echo "🔍 Checking frontend environment..."
-if [ -f "frontend/.env.local" ]; then
+if [ -f "frontend/.env.development" ]; then
     test_passed "Frontend environment file exists"
     
     # Check if canister IDs are set
-    if grep -q "NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID" frontend/.env.local; then
+    if grep -q "NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID" frontend/.env.development; then
         test_passed "Canister IDs are configured"
     else
         test_warning "Canister IDs not found in environment file"

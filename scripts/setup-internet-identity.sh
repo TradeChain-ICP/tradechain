@@ -35,17 +35,17 @@ II_CANISTER_ID=$(dfx canister id internet_identity)
 echo "✅ Internet Identity deployed with canister ID: $II_CANISTER_ID"
 
 # Update the environment file with correct Internet Identity URL
-if [ -f "frontend/.env.local" ]; then
+if [ -f "frontend/.env.development" ]; then
     echo "⚙️ Updating environment file..."
     
     # Remove old Internet Identity URL line
-    grep -v "NEXT_PUBLIC_INTERNET_IDENTITY_URL" frontend/.env.local > frontend/.env.local.tmp || true
-    mv frontend/.env.local.tmp frontend/.env.local
+    grep -v "NEXT_PUBLIC_INTERNET_IDENTITY_URL" frontend/.env.development > frontend/.env.development.tmp || true
+    mv frontend/.env.development.tmp frontend/.env.development
     
     # Add new Internet Identity URL
-    echo "NEXT_PUBLIC_INTERNET_IDENTITY_URL=http://localhost:4943/?canisterId=${II_CANISTER_ID}" >> frontend/.env.local
+    echo "NEXT_PUBLIC_INTERNET_IDENTITY_URL=http://localhost:4943/?canisterId=${II_CANISTER_ID}" >> frontend/.env.development
     
-    echo "✅ Updated .env.local with new Internet Identity canister ID"
+    echo "✅ Updated .env.development with new Internet Identity canister ID"
 fi
 
 # Test Internet Identity
