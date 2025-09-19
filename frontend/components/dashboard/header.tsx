@@ -273,7 +273,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
           </div>
 
           {/* KYC Status Button - Insert between search and cart */}
-          {kycStatus && (
+          {/* {kycStatus && (
             <Button
               variant="ghost"
               size="sm"
@@ -291,7 +291,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                 </Badge>
               </Link>
             </Button>
-          )}
+          )} */}
 
           {/* Shopping Cart - Only for buyers */}
           {user?.role === 'buyer' && (
