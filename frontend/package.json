@@ -8,9 +8,7 @@
     "lint": "next lint",
     "start": "next start",
     "deploy:local": "npm run build && dfx deploy frontend --network local",
-    "deploy:ic": "../scripts/deploy-frontend-to-icp.sh",
-    "generate": "dfx generate",
-    "prebuild": "dfx generate"
+    "deploy:ic": "../scripts/deploy-frontend-to-icp.sh"
   },
   "dependencies": {
     "@auth/core": "latest",
