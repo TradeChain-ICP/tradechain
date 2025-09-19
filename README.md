@@ -302,8 +302,8 @@ For detailed setup instructions, see [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 - **Adams Tolani Victor** - Project Manager & Product Lead  
 - **Lydia Solomon** - Product Designer & Ideator   
-- **Dominion Balogun Kehinde** - Frontend Developer   
-- **Olowu Timilehin** - Backend Developer & ICP Integration
+- **Dominion Balogun Kehinde** - Full-Stack Developer & ICP Integration   
+- **Olowu Timilehin** - Backend Developer & Smart Contracts
 
 ---
 
@@ -345,7 +345,7 @@ For detailed setup instructions, see [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 **Team Contact:**
 - **Discord:** @Spacefinity_, @lideeyah, @kenzycodex, @TimmyDev5
 - **Email:** Available upon request
-- **Social:** @tradeChain_ (Twitter)
+- **Social:** @tradeChain_ (Twitter), @TradeChain-ICP (GitHub)   
 
 ---
 
