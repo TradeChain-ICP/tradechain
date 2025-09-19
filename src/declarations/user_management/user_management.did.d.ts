@@ -85,7 +85,12 @@ export interface _SERVICE {
   'getCurrentUser' : ActorMethod<[], Result>,
   'getMigrationStatus' : ActorMethod<
     [],
-    { 'info' : string, 'version' : bigint, 'isComplete' : boolean }
+    {
+      'info' : string,
+      'version' : bigint,
+      'userCount' : bigint,
+      'isComplete' : boolean,
+    }
   >,
   'getProfilePicture' : ActorMethod<[], [] | [Uint8Array | number[]]>,
   'getTotalUsers' : ActorMethod<[], bigint>,

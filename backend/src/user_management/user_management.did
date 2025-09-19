@@ -1,4 +1,5 @@
 // backend/src/user_management/user_management.did
+// Updated Candid interface to match your enhanced functions
 
 type UserRole = variant {
   buyer;
@@ -40,24 +41,25 @@ type TransactionStatus = variant {
   cancelled;
 };
 
+// Updated User type with all new fields
 type User = record {
   id: text;
   principalId: text;
   firstName: text;
   lastName: text;
-  email: text;
-  phone: opt text;
-  profilePicture: opt blob;
+  email: text;                    // NEW FIELD
+  phone: opt text;               // NEW FIELD
+  profilePicture: opt blob;      // NEW FIELD
   role: opt UserRole;
   authMethod: AuthMethod;
   kycStatus: KYCStatus;
   kycSubmittedAt: opt int;
   verified: bool;
   walletAddress: text;
-  bio: opt text;
-  location: opt text;
-  company: opt text;
-  website: opt text;
+  bio: opt text;                 // NEW FIELD
+  location: opt text;            // NEW FIELD
+  company: opt text;             // NEW FIELD
+  website: opt text;             // NEW FIELD
   joinedAt: int;
   lastActive: int;
 };
@@ -115,6 +117,8 @@ type HealthCheck = record {
 type MigrationStatus = record {
   version: nat;
   isComplete: bool;
+  info: text;
+  userCount: nat;
 };
 
 type Result_User = variant {
@@ -143,7 +147,7 @@ type Result_Wallet = variant {
 };
 
 service : {
-  // User registration and profile management
+  // User registration and profile management (UPDATED SIGNATURES)
   registerUser: (AuthMethod, text, text, text, opt text, opt blob) -> (Result_User);
   setUserRole: (UserRole, opt text, opt text, opt text, opt text) -> (Result_User);
   getCurrentUser: () -> (Result_User);
@@ -165,6 +169,10 @@ service : {
   userExists: () -> (bool);
   getProfilePicture: () -> (opt blob);
   
+  // Migration functions (NEW)
+  getMigrationStatus: () -> (MigrationStatus) query;
+  forceMigration: () -> (Result_Text);
+  
   // Query functions
   getUsersByRole: (UserRole) -> (vec User) query;
   getUserByPrincipal: (principal) -> (opt User) query;
@@ -173,5 +181,4 @@ service : {
   getUserStats: () -> (UserStats) query;
   getWalletStats: () -> (WalletStats) query;
   healthCheck: () -> (HealthCheck) query;
-  getMigrationStatus: () -> (MigrationStatus) query;
 }

@@ -90,6 +90,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Record({
             'info' : IDL.Text,
             'version' : IDL.Nat,
+            'userCount' : IDL.Nat,
             'isComplete' : IDL.Bool,
           }),
         ],

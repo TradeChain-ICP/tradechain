@@ -119,6 +119,7 @@ service : {
    (record {
       info: text;
       isComplete: bool;
+      userCount: nat;
       version: nat;
     }) query;
   getProfilePicture: () -> (opt blob);
