@@ -18,14 +18,17 @@ try {
   console.warn('⚠️ Could not import user management declaration, using mock mode');
 }
 
-// Configuration with updated canister ID
+// Configuration with updated canister IDs from your deployment
 const CONFIG = {
   HOST: process.env.NEXT_PUBLIC_IC_HOST || 'http://localhost:4943',
   INTERNET_IDENTITY_URL:
-    process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 'https://identity.ic0.app',
+    process.env.NEXT_PUBLIC_INTERNET_IDENTITY_URL || 
+    'http://localhost:4943/?canisterId=uxrrr-q7777-77774-qaaaq-cai',
   NFID_URL: process.env.NEXT_PUBLIC_NFID_URL || 'https://nfid.one/authenticate',
   USER_MANAGEMENT_CANISTER_ID:
-    process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'wuprw-oqaaa-aaaae-qfx4a-cai',
+    process.env.NEXT_PUBLIC_USER_MANAGEMENT_CANISTER_ID || 'uzt4z-lp777-77774-qaabq-cai',
+  INTERNET_IDENTITY_CANISTER_ID: 
+    process.env.NEXT_PUBLIC_INTERNET_IDENTITY_CANISTER_ID || 'uxrrr-q7777-77774-qaaaq-cai',
   DISABLE_SIGNATURE_VALIDATION: process.env.NEXT_PUBLIC_DISABLE_SIGNATURE_VALIDATION === 'true',
 };
 
@@ -76,10 +79,11 @@ class ICPAgentManager {
     this.agent = new HttpAgent({
       host: CONFIG.HOST,
       identity: this.identity,
-      verifyQuerySignatures: process.env.NODE_ENV !== 'development',
+      verifyQuerySignatures:
+        !CONFIG.DISABLE_SIGNATURE_VALIDATION && process.env.NODE_ENV !== 'development',
     });
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' || CONFIG.DISABLE_SIGNATURE_VALIDATION) {
       try {
         await this.agent.fetchRootKey();
         console.log('🔑 Root key fetched for local development');
@@ -98,10 +102,12 @@ class ICPAgentManager {
 
     try {
       console.log('🎭 Creating user management actor...');
+      console.log('📍 Using canister ID:', CONFIG.USER_MANAGEMENT_CANISTER_ID);
 
       const createActorOptions = {
         agent: this.agent,
-        queryVerificationDisabled: process.env.NODE_ENV === 'development',
+        queryVerificationDisabled:
+          process.env.NODE_ENV === 'development' || CONFIG.DISABLE_SIGNATURE_VALIDATION,
       };
 
       this.userManagementActor = this.createActor(
@@ -131,8 +137,12 @@ class ICPAgentManager {
         if (typeof originalMethod === 'function') {
           return async (...args: any[]) => {
             try {
-              return await originalMethod.apply(target, args);
+              console.log(`📞 Calling ${actorName}.${String(prop)} with args:`, args);
+              const result = await originalMethod.apply(target, args);
+              console.log(`✅ ${actorName}.${String(prop)} result:`, result);
+              return result;
             } catch (error: any) {
+              console.error(`❌ ${actorName}.${String(prop)} error:`, error);
               if (handleDevelopmentError(error, `${actorName}.${String(prop)}`)) {
                 return this.createMethodMockResponse(String(prop));
               }
@@ -147,10 +157,13 @@ class ICPAgentManager {
   }
 
   private createMethodMockResponse(methodName: string) {
+    console.log(`🎭 Creating mock response for ${methodName}...`);
+
     switch (methodName) {
       case 'userExists':
-        return false;
+        return false; // Always return false for new user testing
       case 'getCurrentUser':
+        return { err: 'User not found' }; // Force role selection flow
       case 'registerUser':
       case 'setUserRole':
         return createMockSuccessResponse(methodName);
@@ -164,7 +177,7 @@ class ICPAgentManager {
       case 'getWallet':
         return {
           ok: {
-            owner: 'mock-principal',
+            owner: Principal.fromText('2vxsx-fae'),
             icpBalance: BigInt(100000000),
             usdBalance: BigInt(10000),
             nairaBalance: BigInt(5000000),
@@ -235,6 +248,7 @@ class ICPAgentManager {
 
   async authenticateWithII(): Promise<boolean> {
     console.log('🔐 Starting Internet Identity authentication...');
+    console.log('🌐 Using II URL:', CONFIG.INTERNET_IDENTITY_URL);
 
     if (!this.authClient) {
       await this.init();
@@ -248,10 +262,15 @@ class ICPAgentManager {
           try {
             console.log('✅ Internet Identity authentication successful');
             this.identity = this.authClient!.getIdentity();
+
+            // Small delay to ensure identity is properly set
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             await this.createAgent();
             await this.createUserManagementActor();
             resolve(true);
           } catch (error) {
+            console.log('⚠️ Post-auth setup had issues, using mock fallback');
             if (handleDevelopmentError(error, 'II Post-Auth Setup')) {
               console.log('🎭 Using mock setup after II auth');
               await this.createMockActor();
@@ -286,11 +305,15 @@ class ICPAgentManager {
           try {
             console.log('✅ NFID authentication successful');
             this.identity = this.authClient!.getIdentity();
+
+            // Small delay to ensure identity is properly set
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             await this.createAgentForNFID();
             await this.createUserManagementActor();
             resolve(true);
           } catch (error) {
-            console.log('🎭 NFID signature validation failed, using mock setup');
+            console.log('⚠️ NFID signature validation failed, using mock setup');
             await this.createMockActor();
             resolve(true);
           }
@@ -313,7 +336,7 @@ class ICPAgentManager {
     this.agent = new HttpAgent({
       host: CONFIG.HOST,
       identity: this.identity,
-      verifyQuerySignatures: process.env.NODE_ENV !== 'development',
+      verifyQuerySignatures: false, // Disable for NFID in development
     });
 
     if (process.env.NODE_ENV === 'development') {
@@ -341,7 +364,9 @@ class ICPAgentManager {
     if (!this.authClient) {
       await this.init();
     }
-    return this.authClient?.isAuthenticated() || false;
+    const isAuth = this.authClient?.isAuthenticated() || false;
+    console.log('🔍 Authentication status:', isAuth);
+    return isAuth;
   }
 
   getIdentity(): Identity | null {
@@ -349,25 +374,34 @@ class ICPAgentManager {
   }
 
   getPrincipal(): Principal | null {
-    return this.identity?.getPrincipal() || null;
+    const principal = this.identity?.getPrincipal() || null;
+    console.log('🔑 Principal:', principal?.toText());
+    return principal;
   }
 
   getUserManagementActor() {
+    if (!this.userManagementActor) {
+      console.warn('⚠️ User management actor not available, may need to re-initialize');
+    }
     return this.userManagementActor;
   }
 
   async healthCheck(): Promise<boolean> {
     try {
       if (!this.userManagementActor) {
+        console.log('⚠️ No actor available for health check');
         return false;
       }
       const result = await this.userManagementActor.healthCheck();
-      return result?.status === 'healthy';
+      const isHealthy = result?.status === 'healthy';
+      console.log('🏥 Health check result:', isHealthy ? 'HEALTHY' : 'UNHEALTHY');
+      return isHealthy;
     } catch (error) {
       if (handleDevelopmentError(error, 'Health Check')) {
+        console.log('🎭 Health check mock fallback');
         return true;
       }
-      console.error('Health check failed:', error);
+      console.error('❌ Health check failed:', error);
       return false;
     }
   }

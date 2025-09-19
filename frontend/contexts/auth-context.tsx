@@ -116,24 +116,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Helper function to extract role from Motoko variant
+  // FIXED: Better role extraction that handles all Motoko variant formats
   const extractRoleFromBackend = (backendRole: any): UserRole | undefined => {
-    if (!backendRole || backendRole.length === 0) {
+    if (!backendRole) {
       return undefined;
     }
 
-    const roleVariant = backendRole[0];
-    console.log('🔍 Backend role variant:', roleVariant);
+    console.log('🔍 Backend role received:', backendRole);
 
-    if (typeof roleVariant === 'string') {
-      return roleVariant as UserRole;
+    // Handle array format (optional in Motoko)
+    if (Array.isArray(backendRole)) {
+      if (backendRole.length === 0) {
+        return undefined;
+      }
+      return extractRoleFromBackend(backendRole[0]);
     }
 
-    if (typeof roleVariant === 'object' && roleVariant !== null) {
-      if ('buyer' in roleVariant) return 'buyer';
-      if ('seller' in roleVariant) return 'seller';
+    // Handle variant object format
+    if (typeof backendRole === 'object' && backendRole !== null) {
+      // Check for buyer/seller keys
+      if ('buyer' in backendRole) return 'buyer';
+      if ('seller' in backendRole) return 'seller';
 
-      const keys = Object.keys(roleVariant);
+      // Handle nested variant format
+      const keys = Object.keys(backendRole);
       if (keys.length > 0) {
         const key = keys[0];
         if (key === 'buyer' || key === 'seller') {
@@ -142,6 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Handle direct string format
+    if (typeof backendRole === 'string') {
+      if (backendRole === 'buyer' || backendRole === 'seller') {
+        return backendRole as UserRole;
+      }
+    }
+
+    console.warn('⚠️ Could not extract role from:', backendRole);
     return undefined;
   };
 
@@ -151,13 +165,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userManagementActor = IcpAgent.getUserManagementActor();
 
       if (!userManagementActor) {
-        console.log('⚠️ No user management actor available, waiting...');
+        console.log('⚠️ No user management actor available, retrying...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
         return await refreshUserFromBackend();
       }
 
       console.log('📞 Calling getCurrentUser...');
       const result = await userManagementActor.getCurrentUser();
+      console.log('📋 Backend response:', result);
 
       if ('ok' in result) {
         const backendUser = result.ok;
@@ -172,22 +187,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           firstName: backendUser.firstName,
           lastName: backendUser.lastName,
           email: backendUser.email,
-          phone: backendUser.phone?.[0],
-          profilePicture: backendUser.profilePicture?.[0],
+          phone: backendUser.phone && backendUser.phone[0] ? backendUser.phone[0] : undefined,
+          profilePicture:
+            backendUser.profilePicture && backendUser.profilePicture[0]
+              ? backendUser.profilePicture[0]
+              : undefined,
           role: userRole,
           verified: backendUser.verified,
           walletAddress: backendUser.walletAddress,
-          authMethod: backendUser.authMethod.nfid ? 'nfid' : 'internet-identity',
+          authMethod: 'nfid' in backendUser.authMethod ? 'nfid' : 'internet-identity',
           joinedAt: new Date(Number(backendUser.joinedAt) / 1000000),
           kycStatus: Object.keys(backendUser.kycStatus)[0] as KYCStatus,
-          kycSubmittedAt: backendUser.kycSubmittedAt?.[0]
-            ? new Date(Number(backendUser.kycSubmittedAt[0]) / 1000000)
-            : undefined,
+          kycSubmittedAt:
+            backendUser.kycSubmittedAt && backendUser.kycSubmittedAt[0]
+              ? new Date(Number(backendUser.kycSubmittedAt[0]) / 1000000)
+              : undefined,
           lastActive: new Date(Number(backendUser.lastActive) / 1000000),
-          bio: backendUser.bio?.[0],
-          location: backendUser.location?.[0],
-          company: backendUser.company?.[0],
-          website: backendUser.website?.[0],
+          bio: backendUser.bio && backendUser.bio[0] ? backendUser.bio[0] : undefined,
+          location:
+            backendUser.location && backendUser.location[0] ? backendUser.location[0] : undefined,
+          company:
+            backendUser.company && backendUser.company[0] ? backendUser.company[0] : undefined,
+          website:
+            backendUser.website && backendUser.website[0] ? backendUser.website[0] : undefined,
         };
 
         setUser(frontendUser);
@@ -277,6 +299,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log('✅ Wallet connected, checking user existence...');
+
+      // Wait a bit for actor to be ready
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const userManagementActor = IcpAgent.getUserManagementActor();
 
       if (!userManagementActor) {
@@ -284,21 +310,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        console.log('🔍 Checking if user exists...');
         const userExistsResult = await userManagementActor.userExists();
+        console.log('👤 User exists result:', userExistsResult);
 
         if (userExistsResult) {
           console.log('👤 Existing user found, loading data...');
           await refreshUserFromBackend();
 
           const currentUser = await userManagementActor.getCurrentUser();
-          if ('ok' in currentUser && currentUser.ok.role && currentUser.ok.role.length > 0) {
+          if ('ok' in currentUser) {
             const userRole = extractRoleFromBackend(currentUser.ok.role);
             if (userRole) {
+              console.log('🎯 User has role, navigating to dashboard:', userRole);
               navigateToUserDashboard(userRole);
             } else {
+              console.log('🔄 User exists but no role, redirecting to role selection');
               router.push('/role-selection');
             }
           } else {
+            console.log('🔄 Could not get current user, redirecting to role selection');
             router.push('/role-selection');
           }
         } else {
@@ -306,7 +337,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push('/role-selection');
         }
       } catch (canisterError: unknown) {
-        console.log('⚠️ Canister error during user check, assuming new user');
+        console.log('⚠️ Canister error during user check:', canisterError);
+        console.log('🔄 Assuming new user, redirecting to role selection');
         router.push('/role-selection');
       }
     } catch (error: unknown) {
@@ -317,6 +349,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // FIXED: Register user with proper error handling
   const handleRegisterUser = async (data: {
     authMethod: AuthMethod;
     firstName: string;
@@ -327,6 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }) => {
     setIsLoading(true);
     try {
+      console.log('📝 Starting user registration...');
       const userManagementActor = IcpAgent.getUserManagementActor();
       if (!userManagementActor) {
         throw new Error('User management actor not available');
@@ -337,7 +371,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profilePictureBlob = await data.profilePicture.arrayBuffer();
       }
 
-      const authMethod = { [data.authMethod]: null };
+      // FIXED: Proper variant encoding for AuthMethod
+      // The Motoko type expects: variant { nfid; internetIdentity; }
+      const authMethod = data.authMethod === 'nfid' ? { nfid: null } : { internetIdentity: null };
+
+      console.log('📞 Calling registerUser with:', {
+        authMethod,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        hasProfilePicture: !!profilePictureBlob,
+      });
+
       const result = await userManagementActor.registerUser(
         authMethod,
         data.firstName,
@@ -347,16 +393,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profilePictureBlob ? [new Uint8Array(profilePictureBlob)] : []
       );
 
+      console.log('📋 Registration result:', result);
+
       if ('err' in result) {
         throw new Error(result.err);
       }
 
+      console.log('✅ User registered successfully, refreshing data...');
       await refreshUserFromBackend();
+    } catch (error) {
+      console.error('❌ Registration failed:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // FIXED: Set user role with proper variant encoding
   const handleSetUserRole = async (data: {
     role: UserRole;
     bio?: string;
@@ -378,7 +431,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User management actor not available');
       }
 
-      const roleVariant = { [data.role]: null };
+      // Check if user exists first
+      const userExists = await userManagementActor.userExists();
+      if (!userExists) {
+        console.log('⚠️ User not found, need to register first');
+        throw new Error('User not found. Please register first.');
+      }
+
+      // FIXED: Proper variant encoding for UserRole
+      // The Motoko type expects: variant { buyer; seller; }
+      const roleVariant = data.role === 'buyer' ? { buyer: null } : { seller: null };
+
+      console.log('📞 Calling setUserRole with:', {
+        roleVariant,
+        bio: data.bio,
+        location: data.location,
+        company: data.company,
+        website: data.website,
+      });
+
       const result = await userManagementActor.setUserRole(
         roleVariant,
         data.bio ? [data.bio] : [],
@@ -387,6 +458,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data.website ? [data.website] : []
       );
 
+      console.log('📋 Role setting result:', result);
+
       if ('err' in result) {
         throw new Error(result.err);
       }
@@ -394,7 +467,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('✅ Role set successfully, refreshing user data...');
       await refreshUserFromBackend();
 
-      navigateToUserDashboard(data.role);
+      // Navigate after successful role setting
+      setTimeout(() => {
+        navigateToUserDashboard(data.role);
+      }, 1000);
     } catch (error: unknown) {
       console.error('❌ Failed to set user role:', error);
       throw error;

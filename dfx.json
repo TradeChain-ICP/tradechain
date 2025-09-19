@@ -7,18 +7,13 @@
 		"internet_identity": {
 			"type": "custom",
 			"candid": "canisters/internet_identity/internet_identity.did",
-			"wasm": "canisters/internet_identity/internet_identity_dev.wasm.gz",
-			"remote": {
-				"id": {
-					"ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
-				}
-			}
+			"wasm": "canisters/internet_identity/internet_identity.wasm"
 		}
 	},
 	"output_env_file": ".env",
 	"defaults": {
 		"build": {
-			"packtool": ""
+			"packtool": "mops sources"
 		},
 		"generate": {
 			"output": "frontend/declarations"
@@ -29,7 +24,7 @@
 	},
 	"networks": {
 		"local": {
-			"bind": "127.0.0.1:4943",
+			"bind": "localhost:4943",
 			"type": "ephemeral",
 			"replica": {
 				"subnet_type": "system"

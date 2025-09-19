@@ -46,22 +46,6 @@ cat > dfx.json << 'EOF'
       "type": "motoko",
       "main": "backend/src/user_management/main.mo"
     },
-    "wallet": {
-      "type": "motoko",
-      "main": "backend/src/wallet/main.mo"
-    },
-    "marketplace": {
-      "type": "motoko",
-      "main": "backend/src/marketplace/main.mo"
-    },
-    "escrow": {
-      "type": "motoko",
-      "main": "backend/src/escrow/main.mo"
-    },
-    "ai_insights": {
-      "type": "motoko",
-      "main": "backend/src/ai_insights/main.mo"
-    },
     "internet_identity": {
       "type": "custom",
       "candid": "canisters/internet_identity/internet_identity.did",
@@ -116,7 +100,7 @@ MARKETPLACE_ID=$(dfx canister id marketplace)
 ESCROW_ID=$(dfx canister id escrow)
 AI_INSIGHTS_ID=$(dfx canister id ai_insights)
 
-cat > frontend/.env.local << EOF
+cat > frontend/.env.development << EOF
 # Network Configuration
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:4943
