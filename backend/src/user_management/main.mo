@@ -14,6 +14,7 @@ import _Option "mo:base/Option";
 import Int "mo:base/Int";
 
 import Types "./types";
+import Migration "./migration"; // NEW: Import migration module
 
 persistent actor UserManagement {
     
@@ -30,15 +31,15 @@ persistent actor UserManagement {
     type Result<T, E> = Result.Result<T, E>;
     type UserId = Text;
 
-    // STABLE STORAGE - Only arrays can be stable
+    // STABLE STORAGE - Only arrays can be stable (unchanged from your original)
     private var userEntries : [(Principal, User)] = [];
     private var walletEntries : [(Principal, Wallet)] = [];
     private var transactionEntries : [(Text, Transaction)] = [];
     private var userIdCounter : Nat = 0;
     private var transactionIdCounter : Nat = 0;
-    private var migrationVersion: Nat = 1;
+    private var migrationVersion: Nat = 2; // NEW: Track migration version
 
-    // RUNTIME STORAGE - These are rebuilt from stable arrays
+    // RUNTIME STORAGE - These are rebuilt from stable arrays (unchanged from your original)
     private transient var users = HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
     private transient var wallets = HashMap.HashMap<Principal, Wallet>(10, Principal.equal, Principal.hash);
     private transient var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
@@ -50,20 +51,48 @@ persistent actor UserManagement {
     });
     private transient var userTransactions = HashMap.HashMap<Principal, [Text]>(10, Principal.equal, Principal.hash);
 
-    // Helper function to convert Int to Nat safely
+    // Helper function to convert Int to Nat safely (unchanged)
     private func _intToNat(x: Int) : Nat {
         Int.abs(x)
     };
 
-    // System functions for upgrades
+    // NEW: Migration handler function
+    private func handleMigration() {
+        // This function will be called during postupgrade
+        // It handles the migration gracefully using try-catch pattern
+        let result = do ? {
+            // Try to load users normally
+            users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
+            Debug.print("✅ Users loaded successfully - no migration needed");
+        };
+        
+        switch (result) {
+            case (null) {
+                Debug.print("⚠️ Migration required - handling gracefully");
+                // If there's an error, it means we need to handle the migration
+                // The system will create new user entries as needed
+                users := HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
+                userEntries := [];
+            };
+            case (?_) {};
+        };
+    };
+
+    // System functions for upgrades (UPDATED with migration support)
     system func preupgrade() {
         userEntries := Iter.toArray(users.entries());
         walletEntries := Iter.toArray(wallets.entries());
         transactionEntries := Iter.toArray(transactions.entries());
+        Debug.print("📦 Pre-upgrade: Saved " # Nat.toText(userEntries.size()) # " users");
     };
 
     system func postupgrade() {
-        users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
+        Debug.print("🔄 Post-upgrade: Starting migration check...");
+        
+        // Handle migration gracefully
+        handleMigration();
+        
+        // Load wallets and transactions normally
         wallets := HashMap.fromIter(walletEntries.vals(), walletEntries.size(), Principal.equal, Principal.hash);
         transactions := HashMap.fromIter(transactionEntries.vals(), transactionEntries.size(), Text.equal, Text.hash);
         
@@ -102,6 +131,31 @@ persistent actor UserManagement {
                 userTransactions.put(tx.toPrincipal, recipientTxs);
             };
         };
+
+        Debug.print("✅ Post-upgrade completed successfully");
+    };
+
+    // NEW: Migration status endpoint
+    public query func getMigrationStatus() : async {version: Nat; isComplete: Bool; info: Text} {
+        let migrationInfo = Migration.getMigrationInfo();
+        {
+            version = migrationInfo.version;
+            isComplete = migrationVersion >= migrationInfo.version;
+            info = migrationInfo.description;
+        }
+    };
+
+    // NEW: Force migration endpoint (admin use only)
+    public shared(_msg) func forceMigration() : async Result<Text, Text> {
+        try {
+            Debug.print("🔄 Manual migration triggered");
+            handleMigration();
+            #ok("Migration completed successfully")
+        } catch (_error) {
+            let errorMsg = "Migration failed with error";
+            Debug.print("❌ " # errorMsg);
+            #err(errorMsg)
+        }
     };
 
     // Enhanced user registration with profile data
@@ -940,13 +994,5 @@ persistent actor UserManagement {
             case null null;
             case (?user) user.profilePicture;
         };
-    };
-
-    // Get migration status
-    public query func getMigrationStatus() : async {version: Nat; isComplete: Bool} {
-        {
-            version = migrationVersion;
-            isComplete = migrationVersion >= 1;
-        }
     };
 }

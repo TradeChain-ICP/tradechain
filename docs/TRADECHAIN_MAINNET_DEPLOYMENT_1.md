@@ -363,5 +363,3 @@ dfx cycles convert --amount 0.1 --network ic
 - Your deployed canister: `wuprw-oqaaa-aaaae-qfx4a-cai`
 - Your cycles wallet: `5csrz-3iaaa-aaaaj-a2gnq-cai`  
 - Your identity: `mainnet-deployer`
-
-You now have a solid foundation and clear path forward for your hackathon submission. The hardest part (initial deployment) is complete.

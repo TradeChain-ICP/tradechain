@@ -6,6 +6,7 @@ export const idlFactory = ({ IDL }) => {
     'Euro' : IDL.Null,
   });
   const Result_2 = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text });
   const Result_4 = IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text });
   const UserRole = IDL.Variant({ 'seller' : IDL.Null, 'buyer' : IDL.Null });
   const AuthMethod = IDL.Variant({
@@ -78,14 +79,20 @@ export const idlFactory = ({ IDL }) => {
     'totalTransactions' : IDL.Nat,
   });
   const Result_3 = IDL.Variant({ 'ok' : Wallet, 'err' : IDL.Text });
-  const Result_1 = IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text });
   return IDL.Service({
     'addFunds' : IDL.Func([IDL.Nat, TokenType], [Result_2], []),
+    'forceMigration' : IDL.Func([], [Result_1], []),
     'getBalance' : IDL.Func([TokenType], [Result_4], []),
     'getCurrentUser' : IDL.Func([], [Result], []),
     'getMigrationStatus' : IDL.Func(
         [],
-        [IDL.Record({ 'version' : IDL.Nat, 'isComplete' : IDL.Bool })],
+        [
+          IDL.Record({
+            'info' : IDL.Text,
+            'version' : IDL.Nat,
+            'isComplete' : IDL.Bool,
+          }),
+        ],
         ['query'],
       ),
     'getProfilePicture' : IDL.Func([], [IDL.Opt(IDL.Vec(IDL.Nat8))], []),
