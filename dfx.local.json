@@ -5,21 +5,11 @@
 			"type": "motoko",
 			"main": "backend/src/user_management/main.mo"
 		},
-		"wallet": {
-			"type": "motoko",
-			"main": "backend/src/wallet/main.mo"
-		},
-		"marketplace": {
-			"type": "motoko",
-			"main": "backend/src/marketplace/main.mo"
-		},
-		"escrow": {
-			"type": "motoko",
-			"main": "backend/src/escrow/main.mo"
-		},
-		"ai_insights": {
-			"type": "motoko",
-			"main": "backend/src/ai_insights/main.mo"
+		"frontend": {
+			"type": "assets",
+			"source": [
+				"frontend/out"
+			]
 		},
 		"internet_identity": {
 			"type": "custom",

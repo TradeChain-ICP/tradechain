@@ -1,15 +1,8 @@
 {
-	"version": 1,
 	"canisters": {
 		"user_management": {
-			"type": "motoko",
-			"main": "backend/src/user_management/main.mo"
-		},
-		"frontend": {
-			"type": "assets",
-			"source": [
-				"frontend/out"
-			]
+			"main": "backend/src/user_management/main.mo",
+			"type": "motoko"
 		},
 		"internet_identity": {
 			"type": "custom",
@@ -22,9 +15,10 @@
 			}
 		}
 	},
+	"output_env_file": ".env",
 	"defaults": {
 		"build": {
-			"packtool": "vessel sources"
+			"packtool": ""
 		},
 		"generate": {
 			"output": "frontend/declarations"
@@ -33,7 +27,6 @@
 			"subnet_type": "system"
 		}
 	},
-	"output_env_file": ".env",
 	"networks": {
 		"local": {
 			"bind": "127.0.0.1:4943",

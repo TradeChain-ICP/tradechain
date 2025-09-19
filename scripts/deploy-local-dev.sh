@@ -38,7 +38,7 @@ echo "⚙️ Updating environment variables..."
 USER_MANAGEMENT_ID=$(dfx canister id user_management --network local)
 INTERNET_IDENTITY_ID=$(dfx canister id internet_identity --network local)
 
-cat > frontend/.env.local << EOF
+cat > frontend/.env.development << EOF
 # Network Configuration
 NEXT_PUBLIC_DFX_NETWORK=local
 NEXT_PUBLIC_IC_HOST=http://localhost:4943

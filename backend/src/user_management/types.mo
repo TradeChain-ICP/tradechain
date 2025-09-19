@@ -1,18 +1,18 @@
 // backend/src/user_management/types.mo
 
-import Time "mo:base/Time";
+import _Time "mo:base/Time";
 import Principal "mo:base/Principal";
 import Blob "mo:base/Blob";
 
 module {
     
-    // User role enumeration - STABLE
+    // User role enumeration
     public type UserRole = {
         #buyer;
         #seller;
     };
 
-    // KYC status enumeration - STABLE
+    // KYC status enumeration
     public type KYCStatus = {
         #pending;
         #inReview;
@@ -20,13 +20,13 @@ module {
         #rejected;
     };
 
-    // Authentication method enumeration - STABLE
+    // Authentication method enumeration
     public type AuthMethod = {
         #nfid;
         #internetIdentity;
     };
 
-    // Token types supported by the wallet - STABLE
+    // Token types supported by the wallet
     public type TokenType = {
         #ICP;
         #USD;
@@ -34,7 +34,7 @@ module {
         #Euro;
     };
 
-    // Transaction types - STABLE
+    // Transaction types
     public type TransactionType = {
         #transfer;
         #deposit;
@@ -44,7 +44,7 @@ module {
         #refund;
     };
 
-    // Transaction status - STABLE
+    // Transaction status
     public type TransactionStatus = {
         #pending;
         #completed;
@@ -52,15 +52,15 @@ module {
         #cancelled;
     };
 
-    // Enhanced user type with profile data - MADE STABLE
+    // Enhanced user type with profile data
     public type User = {
         id: Text;
-        principalId: Text; // Changed from Principal to Text - STABLE
+        principalId: Text;
         firstName: Text;
         lastName: Text;
         email: Text;
         phone: ?Text;
-        profilePicture: ?[Nat8]; // Changed from ?Blob to ?[Nat8] - STABLE
+        profilePicture: ?Blob;
         role: ?UserRole;
         authMethod: AuthMethod;
         kycStatus: KYCStatus;
@@ -75,9 +75,9 @@ module {
         lastActive: Int;
     };
 
-    // Wallet type - MADE STABLE
+    // Wallet type
     public type Wallet = {
-        owner: Text; // Changed from Principal to Text - STABLE
+        owner: Principal;
         icpBalance: Nat;
         usdBalance: Nat;
         nairaBalance: Nat;
@@ -88,11 +88,11 @@ module {
         totalTransactions: Nat;
     };
 
-    // Transaction record - MADE STABLE
+    // Transaction record
     public type Transaction = {
         id: Text;
-        fromPrincipal: Text; // Changed from Principal to Text - STABLE
-        toPrincipal: Text; // Changed from Principal to Text - STABLE
+        fromPrincipal: Principal;
+        toPrincipal: Principal;
         amount: Nat;
         tokenType: TokenType;
         transactionType: TransactionType;
@@ -102,19 +102,7 @@ module {
         memo: ?Text;
     };
 
-    // Document type for KYC - MADE STABLE
-    public type Document = {
-        id: Text;
-        userId: Text;
-        docType: Text; // "id_front", "id_back", "selfie", "proof_address"
-        fileName: Text;
-        content: [Nat8]; // Changed from Blob to [Nat8] - STABLE
-        mimeType: Text;
-        uploadedAt: Int;
-        verified: Bool;
-    };
-
-    // User profile update request - MADE STABLE
+    // User profile update request
     public type UserProfileUpdate = {
         firstName: Text;
         lastName: Text;
@@ -126,17 +114,17 @@ module {
         website: ?Text;
     };
 
-    // User registration request - MADE STABLE
+    // User registration request
     public type UserRegistration = {
         authMethod: AuthMethod;
         firstName: Text;
         lastName: Text;
         email: Text;
         phone: ?Text;
-        profilePicture: ?[Nat8]; // Changed from ?Blob to ?[Nat8] - STABLE
+        profilePicture: ?Blob;
     };
 
-    // Role selection with profile completion - STABLE
+    // Role selection with profile completion
     public type RoleSelection = {
         role: UserRole;
         bio: ?Text;
@@ -145,7 +133,7 @@ module {
         website: ?Text;
     };
 
-    // Balance summary - STABLE
+    // Balance summary
     public type BalanceSummary = {
         icp: Nat;
         usd: Nat;
@@ -154,15 +142,15 @@ module {
         totalValueUsd: Nat;
     };
 
-    // Transfer request - MADE STABLE
+    // Transfer request
     public type TransferRequest = {
-        to: Text; // Changed from Principal to Text - STABLE
+        to: Principal;
         amount: Nat;
         tokenType: TokenType;
         memo: ?Text;
     };
 
-    // Error types - STABLE
+    // Error types
     public type UserError = {
         #UserNotFound;
         #UserAlreadyExists;
@@ -176,24 +164,22 @@ module {
         #WalletLocked;
         #InvalidAmount;
         #TransferFailed;
-        #DocumentNotFound;
-        #DocumentUploadFailed;
     };
 
-    // Query filters - STABLE
+    // Query filters
     public type UserFilter = {
         role: ?UserRole;
         kycStatus: ?KYCStatus;
         verified: ?Bool;
     };
 
-    // Pagination - STABLE
+    // Pagination
     public type Pagination = {
         offset: Nat;
         limit: Nat;
     };
 
-    // User statistics - STABLE
+    // User statistics
     public type UserStats = {
         totalUsers: Nat;
         verifiedUsers: Nat;
@@ -207,7 +193,7 @@ module {
         totalTransactions: Nat;
     };
 
-    // Wallet statistics - STABLE
+    // Wallet statistics
     public type WalletStats = {
         totalWallets: Nat;
         totalTransactions: Nat;
@@ -217,32 +203,25 @@ module {
         totalEuroLocked: Nat;
     };
 
-    // Session info - MADE STABLE
+    // Session info
     public type SessionInfo = {
         user: User;
         isValid: Bool;
         expiresAt: ?Int;
     };
 
-    // Document upload response - STABLE
-    public type DocumentUploadResponse = {
-        documentId: Text;
-        status: Text;
-        uploadedAt: Int;
+    // Transaction page for pagination
+    public type TransactionPage = {
+        transactions: [Transaction];
+        total: Nat;
+        hasMore: Bool;
     };
 
-    // KYC submission response - STABLE
+    // KYC submission response (without document dependencies)
     public type KYCSubmissionResponse = {
         referenceId: Text;
         status: KYCStatus;
         submittedAt: Int;
         estimatedCompletion: ?Int;
-    };
-
-    // Transaction page for pagination - STABLE
-    public type TransactionPage = {
-        transactions: [Transaction];
-        total: Nat;
-        hasMore: Bool;
     };
 }

@@ -1,0 +1,6 @@
+[package]
+name = "tradechain-backend"
+version = "1.0.0"
+
+[dependencies]
+base = "0.14.9"
