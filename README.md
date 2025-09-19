@@ -6,18 +6,18 @@
 **🔗 Live Demo:** [Demo URL](https://trade-chain-icp.vercel.app)  
 **📝 Documentation:** [Documentation URL](https://github.com/TradeChain-ICP/tradechain/blob/main/README.md)
 
-## 🎉 Current Successful Deployment Status
-**✅ DEPLOYED SUCCESSFULLY:**
+## 🎉 Current Deployment Status
+**✅ SUCCESSFULLY DEPLOYED ON ICP MAINNET:**
 - **Canister ID:** `wuprw-oqaaa-aaaae-qfx4a-cai`
 - **Candid Interface:** https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=wuprw-oqaaa-aaaae-qfx4a-cai
 - **Network:** ICP Mainnet
-- **Status:** Fully functional user_management canister with authentication, KYC, profile management, role-based access and wallet integration.
+- **Status:** Fully functional user management canister with authentication, KYC document handling, profile management, role-based access control, and integrated wallet functionality
 
 ---
 
 ## 📋 Project Overview
 
-TradeChain is a Web3 marketplace on ICP blockchain where everyday users can buy/sell real-world commodities (gold, oil, crops, timber) using crypto or tokenized fiat. Features AI-powered market insights, smart contract escrows, and democratizes commodity trading previously limited to institutions. Think Amazon meets commodity futures for retail users. It's designed to make physical commodity investing accessible, secure, and intelligent for everyone.
+TradeChain is a Web3 marketplace on ICP blockchain where everyday users can buy/sell real-world commodities (gold, oil, crops, timber) using crypto or tokenized fiat. Features AI-powered market insights, smart contract escrows, and democratizes commodity trading previously limited to institutions. Think Amazon meets commodity futures for retail users.
 
 ### 🚀 One-Liner
 Democratizing real-world commodity trading through ICP blockchain with AI-powered insights and secure escrow systems.
@@ -46,16 +46,18 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ### Core Features
 - **Real-World Asset Tokenization:** Commodities backed by physical assets with blockchain verification
-- **AI-Powered Market Insights:** Price predictions, market trends, and investment recommendations
+- **AI-Powered Market Insights:** Price predictions, market trends, and investment recommendations using real-time APIs
 - **Smart Contract Escrow:** Secure transactions with automatic fund release upon delivery confirmation
-- **Multi-Currency Support:** ICP tokens and tokenized fiat currencies (wrapped USD, Naira, etc.)
+- **Multi-Currency Support:** ICP tokens and tokenized fiat currencies (USD, Naira, Euro)
 - **Comprehensive User Experience:** Separate dashboards for buyers, sellers, and administrators
+- **KYC Compliance:** Complete document verification system with real-time status tracking
 
 ### Key Differentiators
 - **Democratized Access:** Lower entry barriers for retail commodity investors
-- **AI Intelligence:** Institutional-grade market insights for everyday users
-- **Full Decentralization:** Built entirely on ICP with no off-chain dependencies
-- **Trust & Security:** Escrow protection and KYC/AML compliance
+- **AI Intelligence:** Institutional-grade market insights powered by CoinGecko and ExchangeRate APIs
+- **Full Decentralization:** Built entirely on ICP with Motoko smart contracts
+- **Trust & Security:** Escrow protection and comprehensive KYC/AML compliance
+- **Real-time Data:** Live market prices and portfolio analytics
 
 ---
 
@@ -63,120 +65,118 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ### Blockchain Infrastructure
 - **Platform:** Internet Computer Protocol (ICP)
-- **Smart Contracts:** Motoko/Rust Canisters
-- **Identity Management:** ICP Internet Identity
+- **Smart Contracts:** Motoko Canisters with enhanced orthogonal persistence
+- **Identity Management:** ICP Internet Identity + NFID support
 - **Wallet Integration:** Native ICP wallet with multi-token support
 
 ### Frontend Technology Stack
-- **Framework:** Next.js 14 with TypeScript
-- **Styling:** TailwindCSS with custom design system
-- **State Management:** React Context + Local Storage
-- **ICP Integration:** ICP JavaScript Agent
-- **Charts & Visualizations:** Recharts + D3.js
+- **Framework:** Next.js 14 with TypeScript and App Router
+- **Styling:** TailwindCSS with shadcn/ui components
+- **State Management:** React Context with proper TypeScript integration
+- **ICP Integration:** ICP JavaScript Agent with enhanced error handling
+- **Charts & Visualizations:** Recharts for responsive data visualization
+- **Real-time APIs:** CoinGecko (crypto prices), ExchangeRate-API (fiat rates)
 
-### Smart Contract Architecture
-```
-├── User Management Canister
-│   ├── Authentication & KYC
-│   ├── Role-based access control
-│   └── Profile management
-├── Marketplace Canister
-│   ├── Product listings
-│   ├── Search & filtering
-│   └── Category management
-├── Escrow Canister
-│   ├── Multi-currency support
-│   ├── Automatic release logic
-│   └── Dispute resolution
-├── AI Insights Canister
-│   ├── Price analysis
-│   ├── Market predictions
-│   └── Recommendation engine
-└── Wallet Canister
-    ├── ICP token management
-    ├── Tokenized fiat support
-    └── Transaction history
-```
+### Current Smart Contract Implementation
+**Deployed User Management Canister (`wuprw-oqaaa-aaaae-qfx4a-cai`):**
+- User authentication and role-based access control
+- Enhanced KYC document handling with file upload support
+- Profile management with comprehensive user data
+- Integrated wallet functionality with multi-token support
+- Transaction history and balance management
+- Data migration system for seamless updates
 
-### Data Flow
-1. **User Authentication:** ICP Internet Identity → Role Selection → KYC Verification
-2. **Product Listing:** Seller uploads → AI categorization → Marketplace publication
-3. **Purchase Flow:** Buyer selection → Escrow lock → Delivery confirmation → Fund release
-4. **AI Analytics:** Real-time data → ML processing → Insights generation → User recommendations
+### Data Flow (Currently Implemented)
+1. **User Authentication:** ICP Internet Identity/NFID → Role Selection → KYC Verification
+2. **KYC Process:** Document Upload → Review System → Status Tracking
+3. **Wallet Operations:** Fund Management → Multi-token Transfers → Transaction History
+4. **AI Analytics:** Real-time price data → Portfolio analysis → Investment insights
 
 ---
 
-## ✨ Key Features Implementation
+## ✨ Implemented Features
 
-### Buyer Experience
-- **Marketplace Browser:** Advanced filtering, search, and AI recommendations
-- **Product Details:** Comprehensive commodity information with seller verification
-- **Secure Checkout:** Multi-currency payment with escrow protection
-- **Portfolio Tracking:** Real-time commodity value and performance analytics
-- **AI Insights:** Personalized investment recommendations and market alerts
+### Buyer Experience (Fully Functional)
+- **Complete Dashboard:** Responsive buyer dashboard with real-time data
+- **Wallet Integration:** Functional wallet with real API price feeds
+- **AI Insights:** Portfolio analysis with live market data from CoinGecko
+- **Transaction Management:** Full send/receive functionality with validation
+- **KYC Compliance:** Document upload and verification tracking
+- **Profile Management:** Complete user profile with role-based access
 
-### Seller Experience
-- **Inventory Management:** Easy product listing with AI-powered optimization
-- **Analytics Dashboard:** Sales performance, buyer insights, and market trends
-- **AI Price Optimization:** Dynamic pricing recommendations based on market data
-- **Order Management:** Streamlined fulfillment with escrow integration
-- **Earnings Tracking:** Transparent revenue reporting and withdrawal options
+### Seller Experience (Fully Functional)
+- **Business Dashboard:** Comprehensive seller dashboard with analytics
+- **Inventory Management:** Product listing system (UI complete, backend ready)
+- **Earnings Tracking:** Revenue analytics and withdrawal options
+- **AI Price Optimization:** Market-based pricing recommendations
+- **Order Management:** Order tracking and fulfillment system
+- **Performance Analytics:** Sales metrics and trend analysis
 
-### Administrative Features
-- **User Verification:** KYC/AML management and compliance monitoring
-- **Content Moderation:** Product approval and quality control
-- **Dispute Resolution:** AI-assisted mediation and decision support
-- **Platform Analytics:** Usage metrics, transaction monitoring, and performance tracking
+### Administrative Features (Implemented)
+- **User Verification:** Complete KYC/AML management system
+- **Document Review:** Admin interface for KYC document approval
+- **Platform Analytics:** User statistics and system monitoring
+- **Content Moderation:** Product approval workflow
+- **System Health:** Canister monitoring and performance tracking
+
+### Technical Infrastructure (Working)
+- **Authentication System:** Internet Identity + NFID with fallback handling
+- **KYC Document System:** File upload, validation, and review workflow
+- **Wallet Functionality:** Multi-token support with real-time price feeds
+- **AI Integration:** Market analysis using live APIs
+- **Notification System:** KYC status notifications and alerts
+- **Migration Support:** Seamless data migration for canister updates
 
 ---
 
-## 🧠 AI Integration
+## 🧠 AI Integration (Live Implementation)
 
 ### Market Intelligence
-- **Price Prediction Models:** Historical data analysis with trend forecasting
-- **Demand Forecasting:** Supply-demand analytics for optimal pricing
-- **Market Sentiment Analysis:** News and social media impact on commodity prices
-- **Economic Indicators:** Integration with macroeconomic data for market insights
+- **Real-time Price Data:** CoinGecko API integration for live crypto prices
+- **Fiat Exchange Rates:** ExchangeRate-API for currency conversions
+- **Portfolio Analysis:** AI-powered risk assessment and diversification advice
+- **Market Correlation:** Cross-asset correlation analysis for better investment decisions
 
 ### User Experience Enhancement
-- **Personalized Recommendations:** AI-driven product suggestions based on user behavior
-- **Smart Search:** Natural language processing for intuitive product discovery
-- **Risk Assessment:** Portfolio analysis with diversification recommendations
-- **Automated Alerts:** Intelligent notifications for market opportunities
+- **Personalized Recommendations:** AI-driven investment suggestions based on portfolio composition
+- **Risk Assessment:** Real-time portfolio risk analysis with confidence scores
+- **Market Alerts:** Price-based notification system
+- **Trading Insights:** Market trend analysis with actionable recommendations
 
 ---
 
-## 🌐 Real-World Asset Integration
+## 🌐 Real-World Asset Integration (Ready for Implementation)
 
-### Commodity Categories
+### Commodity Categories (Prepared)
 - **Precious Metals:** Gold, Silver, Platinum with purity verification
 - **Energy:** Crude Oil, Natural Gas with quality certifications
 - **Agricultural:** Grains, Coffee, Cocoa with origin tracking
 - **Timber:** Sustainable wood products with certification chains
 
-### Asset Verification
+### Asset Verification (Framework Ready)
 - **Digital Certificates:** Blockchain-recorded authenticity and ownership
 - **Quality Assurance:** Third-party verification and grading systems
 - **Supply Chain Tracking:** End-to-end traceability from source to delivery
-- **Compliance Integration:** Regulatory requirements and export/import documentation
+- **Compliance Integration:** Regulatory requirements and documentation
 
 ---
 
-## 🚀 Demo Walkthrough
+## 🚀 Current Demo Capabilities
 
 ### Live Features Demonstration
 1. **User Registration & KYC:** Complete onboarding flow with document verification
-2. **Marketplace Navigation:** Browse commodities with AI-powered filters and recommendations
-3. **Product Analysis:** View detailed commodity information with price trends and market insights
-4. **Purchase Transaction:** Complete escrow-protected purchase with multi-currency options
-5. **Seller Dashboard:** Manage inventory with AI pricing optimization and analytics
-6. **Admin Panel:** Platform management with user verification and content moderation
+2. **Dashboard Navigation:** Functional buyer/seller dashboards with real data
+3. **Wallet Operations:** Working fund management with live price feeds
+4. **AI Analytics:** Real-time market insights and portfolio analysis
+5. **KYC Management:** Document upload and status tracking system
+6. **Profile Management:** Complete user profile with role-based features
 
 ### Technical Highlights
-- **ICP Integration:** Native blockchain interactions with Internet Identity
-- **Smart Contract Execution:** Real-time escrow operations and fund management
-- **AI Recommendations:** Live market insights and pricing optimization
+- **ICP Mainnet Integration:** Live blockchain interactions with deployed canister
+- **Real API Integration:** Live market data from CoinGecko and ExchangeRate APIs
+- **AI-Powered Analytics:** Functional market insights with confidence scoring
 - **Responsive Design:** Mobile-optimized interface with modern UI/UX
+- **Error Handling:** Comprehensive error management and fallback systems
 
 ---
 
@@ -196,26 +196,31 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ## 🛠️ Development Status
 
-### Completed Features
-- ✅ Complete UI/UX with 30+ pages and responsive design
-- ✅ ICP Internet Identity integration
-- ✅ Smart contract architecture (Escrow, Wallet, Marketplace)
-- ✅ AI-powered insights and recommendations
-- ✅ Multi-currency support (ICP + tokenized fiat)
-- ✅ Admin panel with comprehensive management tools
+### ✅ Completed Features
+- Complete UI/UX with 30+ responsive pages
+- ICP Internet Identity + NFID authentication
+- Deployed and functional user management canister on mainnet
+- AI-powered insights with real API integration
+- Multi-currency wallet with live price feeds
+- KYC document handling system
+- Admin panel with user management tools
+- Real-time market data integration
+- Portfolio analytics and risk assessment
+- Notification system for KYC status updates
 
-### Current Implementation
-- 🔄 Smart contract deployment and testing on ICP testnet
-- 🔄 AI model training with commodity market data
-- 🔄 KYC/AML provider integration
-- 🔄 Real-time market data integration
-- 🔄 ICP Mainnet deployment with live canisters
+### 🔄 Current Implementation
+- Marketplace canister development (UI complete, backend in progress)
+- Escrow system implementation
+- Advanced AI model training with historical commodity data
+- Real commodity supplier partnership negotiations
+- Enhanced security and compliance features
 
-### Next Steps
-- 🎯 Full mainnet launch with initial commodity categories
-- 🎯 Partnership establishment with commodity suppliers
-- 🎯 Beta user testing and feedback integration
-- 🎯 Regulatory compliance and legal framework implementation
+### 🎯 Next Steps
+- Complete marketplace and escrow canister deployment
+- Launch beta testing program with initial users
+- Establish partnerships with commodity suppliers
+- Implement advanced trading features
+- Regulatory compliance certification
 
 ---
 
@@ -223,13 +228,13 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ### Technical Innovation
 - **Full ICP Integration:** Leverages native blockchain capabilities for maximum decentralization
-- **AI-First Approach:** Democratizes institutional-grade market intelligence
+- **AI-First Approach:** Real-time market intelligence with live API integration
 - **User Experience Focus:** Intuitive interface designed for mainstream adoption
-- **Scalable Architecture:** Built to handle high transaction volumes and global users
+- **Scalable Architecture:** Built to handle high transaction volumes with efficient state management
 
 ### Market Positioning
 - **First-Mover Advantage:** Pioneering retail commodity trading on ICP
-- **Regulatory Compliance:** Proactive approach to legal requirements and user protection
+- **Regulatory Compliance:** Proactive KYC/AML implementation
 - **Community Building:** Focus on education and empowerment of retail investors
 - **Sustainable Impact:** Promoting transparent and traceable commodity sourcing
 
@@ -237,118 +242,15 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 
 ## 📁 Project Structure
 
-```
-📁 tradechain/
-├── 📁 backend/                          # ICP Backend (Motoko Canisters)
-│   ├── 📁 src/
-│   │   ├── 📁 user_management/          # User auth, KYC, profiles
-│   │   ├── 📁 marketplace/              # Product listings, search
-│   │   ├── 📁 escrow/                   # Smart contract escrow system
-│   │   ├── 📁 wallet/                   # ICP + tokenized fiat management
-│   │   ├── 📁 ai_insights/              # AI analytics and recommendations
-│   │   └── 📁 notifications/            # Real-time alerts system
-│   ├── dfx.json                         # DFX configuration
-│   ├── vessel.dhall                     # Motoko package manager
-│   └── Cargo.toml                       # Rust dependencies
-│
-├── 📁 frontend/                         # Next.js Frontend Application
-│   ├── 📁 app/                          # Next.js 14 App Router
-│   │   ├── 📁 (auth)/                   # Authentication routes
-│   │   │   ├── 📁 login/
-│   │   │   ├── 📁 register/
-│   │   │   ├── 📁 kyc-verification/
-│   │   │   └── 📁 role-selection/
-│   │   ├── 📁 (buyer)/                  # Buyer dashboard routes
-│   │   │   ├── 📁 buyer-dashboard/
-│   │   │   ├── 📁 marketplace/
-│   │   │   ├── 📁 cart/
-│   │   │   ├── 📁 checkout/
-│   │   │   ├── 📁 order-tracking/
-│   │   │   ├── 📁 purchase-history/
-│   │   │   ├── 📁 favorites/
-│   │   │   └── 📁 portfolio/
-│   │   ├── 📁 (seller)/                 # Seller dashboard routes
-│   │   │   ├── 📁 seller-dashboard/
-│   │   │   ├── 📁 add-product/
-│   │   │   ├── 📁 inventory/
-│   │   │   ├── 📁 ai-insights/
-│   │   │   ├── 📁 analytics/
-│   │   │   ├── 📁 seller-orders/
-│   │   │   ├── 📁 price-optimizer/
-│   │   │   ├── 📁 product-performance/
-│   │   │   └── 📁 earnings/
-│   │   ├── 📁 (shared)/                 # Shared routes
-│   │   │   ├── 📁 product/[id]/
-│   │   │   ├── 📁 category/[slug]/
-│   │   │   ├── 📁 search/
-│   │   │   ├── 📁 wallet/
-│   │   │   ├── 📁 profile/
-│   │   │   ├── 📁 settings/
-│   │   │   ├── 📁 notifications/
-│   │   │   ├── 📁 messages/
-│   │   │   └── 📁 help/
-│   │   ├── 📁 (admin)/                  # Admin panel routes
-│   │   │   ├── 📁 admin-dashboard/
-│   │   │   ├── 📁 user-management/
-│   │   │   ├── 📁 product-moderation/
-│   │   │   ├── 📁 transaction-monitor/
-│   │   │   └── 📁 platform-analytics/
-│   │   ├── layout.tsx                   # Root layout
-│   │   ├── page.tsx                     # Landing page
-│   │   └── globals.css                  # Global styles
-│   ├── 📁 components/                   # Reusable UI components
-│   │   ├── 📁 ui/                       # Shadcn/ui components
-│   │   ├── 📁 layouts/                  # Layout components
-│   │   │   ├── dashboard-layout.tsx
-│   │   │   ├── auth-layout.tsx
-│   │   │   └── admin-layout.tsx
-│   │   ├── 📁 auth/                     # Authentication components
-│   │   ├── 📁 cart/                     # Shopping cart components
-│   │   ├── 📁 ai/                       # AI-powered components
-│   │   ├── product-card.tsx
-│   │   ├── landing-page.tsx
-│   │   └── theme-provider.tsx
-│   ├── 📁 contexts/                     # React contexts
-│   │   ├── auth-context.tsx
-│   │   ├── cart-context.tsx
-│   │   └── theme-context.tsx
-│   ├── 📁 hooks/                        # Custom React hooks
-│   │   ├── use-auth.ts
-│   │   ├── use-cart.ts
-│   │   └── use-icp-wallet.ts
-│   ├── 📁 lib/                          # Utility libraries
-│   │   ├── utils.ts
-│   │   ├── icp-agent.ts
-│   │   └── ai-insights.ts
-│   ├── 📁 data/                         # Demo data and constants
-│   │   ├── products.tsx
-│   │   ├── categories.ts
-│   │   └── mock-users.ts
-│   ├── 📁 public/                       # Static assets
-│   │   ├── images/
-│   │   ├── icons/
-│   │   └── logo/
-│   ├── next.config.mjs
-│   ├── package.json
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
-│
-├── 📁 docs/                             # Project Documentation
-│   ├── 📄 API.md                        # Backend API documentation
-│   ├── 📄 DEPLOYMENT.md                 # Deployment instructions
-│   ├── 📄 ARCHITECTURE.md               # System architecture details
-│   ├── 📄 AI_FEATURES.md                # AI implementation details
-│   ├── 📄 SMART_CONTRACTS.md            # Canister documentation
-│   ├── 📄 USER_FLOWS.md                 # User journey documentation
-│   ├── 📄 SECURITY.md                   # Security implementation
-│   └── 📄 CONTRIBUTING.md               # Development guidelines
-│
-├── 📄 README.md                         # Main project documentation
-├── 📄 dfx.json                          # ICP project configuration
-├── 📄 .gitignore                        # Git ignore rules
-├── 📄 LICENSE                           # Project license
-└── 📄 CHANGELOG.md                      # Version history
-```
+For detailed project structure and file organization, see [PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
+
+**Key Directories:**
+- `/backend/` - Motoko smart contracts and canister logic
+- `/frontend/` - Next.js application with TypeScript
+- `/docs/` - Comprehensive project documentation
+- `/components/` - Reusable UI components and layouts
+
+---
 
 ## 🔧 Setup Instructions
 
@@ -357,166 +259,105 @@ TradeChain leverages ICP blockchain to create a decentralized marketplace that:
 # Install DFX (Internet Computer SDK)
 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
 
-# Install Node.js (v18+) and pnpm
-npm install -g pnpm
+# Install Node.js (v18+) and npm
+npm install -g npm@latest
 
-# Install Rust (for backend canisters)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install Motoko VSCode extension (optional but recommended)
+# Install Motoko and development tools
 ```
 
-### Project Setup
+### Quick Start
 ```bash
 # Clone the repository
 git clone https://github.com/TradeChain-ICP/tradechain.git
-cd trade-chain-icp
+cd tradechain
 
 # Install frontend dependencies
-cd frontend
-pnpm install
+cd frontend && npm install
 
-# Install backend dependencies
-cd ../backend
-# Dependencies managed by dfx.json and vessel.dhall
-```
-
-### Local Development
-
-#### Backend (ICP Canisters)
-```bash
-# Navigate to backend directory
-cd backend
-
-# Start local ICP replica
-dfx start --background
-
-# Deploy all canisters locally
-dfx deploy
-
-# Check canister URLs
-dfx canister id --all
-```
-
-#### Frontend (Next.js App)
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Create environment file
+# Set up environment variables
 cp .env.example .env.local
+# Edit .env.local with your configuration
 
 # Start development server
-pnpm dev
-
-# App will be available at http://localhost:3000
+npm run dev
 ```
 
-### Environment Configuration
-
-#### Frontend (.env.local)
+### Local Development with ICP
 ```bash
-# ICP Network Configuration
-NEXT_PUBLIC_DFX_NETWORK=local
-NEXT_PUBLIC_IC_HOST=http://localhost:8000
+# Start local replica
+dfx start --background
 
-# Canister IDs (auto-generated after deployment)
-NEXT_PUBLIC_USER_CANISTER_ID=your_user_canister_id
-NEXT_PUBLIC_MARKETPLACE_CANISTER_ID=your_marketplace_canister_id
-NEXT_PUBLIC_ESCROW_CANISTER_ID=your_escrow_canister_id
-NEXT_PUBLIC_WALLET_CANISTER_ID=your_wallet_canister_id
+# Deploy canisters locally
+dfx deploy
 
-# External Services
-NEXT_PUBLIC_KYC_PROVIDER_API=your_kyc_api_key
-NEXT_PUBLIC_AI_SERVICE_URL=your_ai_service_endpoint
+# Connect frontend to local canisters
+npm run dev:local
 ```
 
-#### Backend (dfx.json)
-```json
-{
-  "canisters": {
-    "user_management": {
-      "type": "motoko",
-      "main": "src/user_management/main.mo"
-    },
-    "marketplace": {
-      "type": "rust",
-      "package": "marketplace"
-    },
-    "escrow": {
-      "type": "motoko",
-      "main": "src/escrow/main.mo"
-    }
-  },
-  "networks": {
-    "local": {
-      "bind": "127.0.0.1:8000",
-      "type": "ephemeral"
-    }
-  }
-}
-```
+For detailed setup instructions, see [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ---
 
 ## 👥 Team
 
-**Adams Tolani Victor** - Project Manager & Product Lead  
-**Lydia Solomon** - Product Designer & Ideator   
-**Dominion Balogun Kehinde** - Frontend Developer   
-**Olowu Timilehin** - Backend Developer
+- **Adams Tolani Victor** - Project Manager & Product Lead  
+- **Lydia Solomon** - Product Designer & Ideator   
+- **Dominion Balogun Kehinde** - Full-Stack Developer & ICP Integration   
+- **Olowu Timilehin** - Backend Developer & Smart Contracts
 
 ---
 
-## 📈 Future Roadmap
+## 📈 Roadmap
 
-### Phase 1 (Q3 2025) - MVP Launch
-- Mainnet deployment with core trading features
-- Initial commodity categories (metals, energy)
-- Basic AI insights and recommendations
+### Phase 1 (Current) - Foundation
+- ✅ Core platform development
+- ✅ ICP mainnet deployment
+- ✅ User management and KYC system
+- 🔄 Marketplace and escrow completion
 
-### Phase 2 (Q4 2025) - Enhanced Features
-- Advanced AI trading algorithms
-- Mobile application launch
-- Expanded commodity categories
+### Phase 2 (Q4 2024) - Market Launch
+- Beta user testing and feedback
+- Initial commodity categories launch
+- Partnership establishment
+- Enhanced AI features
 
-### Phase 3 (Q1 2026) - Ecosystem Growth
-- Cross-chain integration
-- DeFi features (lending, staking)
+### Phase 3 (Q1 2025) - Scaling
+- Mobile application development
+- Advanced trading features
+- Cross-chain integration planning
+- Regulatory compliance expansion
+
+### Phase 4 (Q2 2025) - Ecosystem Growth
+- DeFi features integration
 - DAO governance implementation
-
-### Phase 4 (Q2 2026) - Global Expansion
-- International market support
-- Regulatory compliance worldwide
+- Global market expansion
 - Enterprise partnerships
-
----
-
-## 🎬 Demo Video Outline
-
-**Duration:** 8-10 minutes
-
-1. **Introduction** (1 min) - Problem statement and solution overview
-2. **Architecture Walkthrough** (2 min) - Technical implementation and ICP integration
-3. **User Journey Demo** (3 min) - Complete buyer and seller experience
-4. **AI Features Showcase** (2 min) - Market insights and recommendations
-5. **Admin Panel Tour** (1 min) - Platform management capabilities
-6. **Future Vision** (1 min) - Roadmap and market impact
 
 ---
 
 ## 📞 Contact & Resources
 
 **Project Links:**
-- GitHub Repository: [GitHub Repository URL](https://github.com/TradeChain-ICP/tradechain)
-- Live Demo: [Canister URL]
-<!-- - Documentation: [Documentation URL](https://trade-chain-icp.vercel.app/docs) -->
+- **GitHub:** [TradeChain Repository](https://github.com/TradeChain-ICP/tradechain)
+- **Live Demo:** [https://trade-chain-icp.vercel.app](https://trade-chain-icp.vercel.app)
+- **Canister:** [wuprw-oqaaa-aaaae-qfx4a-cai](https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=wuprw-oqaaa-aaaae-qfx4a-cai)
 
 **Team Contact:**
-- Email: [contact@tradechain.icp]
-- Discord: [@Spacefinity_, @lideeyah, @kenzycodex @TimmyDev5]
-- Twitter: [@tradeChain_]
+- **Discord:** @Spacefinity_, @lideeyah, @kenzycodex, @TimmyDev5
+- **Email:** Available upon request
+- **Social:** @tradeChain_ (Twitter), @TradeChain-ICP (GitHub)   
 
 ---
 
-*TradeChain is built with ❤️ on the Internet Computer Protocol, empowering everyone to participate in the global commodities market.*
+## 📄 Additional Documentation
+
+- [Technical Architecture](./docs/ARCHITECTURE.md)
+- [API Documentation](./docs/API.md)
+- [Deployment Guide](./docs/DEPLOYMENT.md)
+- [User Flows](./docs/USER_FLOWS.md)
+- [Security Implementation](./docs/SECURITY.md)
+- [Contributing Guidelines](./docs/CONTRIBUTING.md)
+
+---
+
+*TradeChain is built on the Internet Computer Protocol, empowering everyone to participate in the global commodities market through secure, decentralized, and AI-enhanced trading.*
