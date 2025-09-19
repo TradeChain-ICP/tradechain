@@ -112,12 +112,16 @@ type AuthMethod =
  };
 service : {
   addFunds: (amount: nat, tokenType: TokenType) -> (Result_2);
+  forceMigration: () -> (Result_1);
   getBalance: (tokenType: TokenType) -> (Result_4);
   getCurrentUser: () -> (Result);
-  getMigrationStatus: () -> (record {
-                               isComplete: bool;
-                               version: nat;
-                             }) query;
+  getMigrationStatus: () ->
+   (record {
+      info: text;
+      isComplete: bool;
+      userCount: nat;
+      version: nat;
+    }) query;
   getProfilePicture: () -> (opt blob);
   getTotalUsers: () -> (nat) query;
   getTransaction: (txId: text) -> (opt Transaction) query;

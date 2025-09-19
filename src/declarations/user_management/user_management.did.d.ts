@@ -80,11 +80,17 @@ export interface Wallet {
 }
 export interface _SERVICE {
   'addFunds' : ActorMethod<[bigint, TokenType], Result_2>,
+  'forceMigration' : ActorMethod<[], Result_1>,
   'getBalance' : ActorMethod<[TokenType], Result_4>,
   'getCurrentUser' : ActorMethod<[], Result>,
   'getMigrationStatus' : ActorMethod<
     [],
-    { 'version' : bigint, 'isComplete' : boolean }
+    {
+      'info' : string,
+      'version' : bigint,
+      'userCount' : bigint,
+      'isComplete' : boolean,
+    }
   >,
   'getProfilePicture' : ActorMethod<[], [] | [Uint8Array | number[]]>,
   'getTotalUsers' : ActorMethod<[], bigint>,

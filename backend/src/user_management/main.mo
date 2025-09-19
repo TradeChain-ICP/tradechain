@@ -1,4 +1,5 @@
 // backend/src/user_management/main.mo
+// SAFE UPDATE: Add explicit migration handling
 
 import Principal "mo:base/Principal";
 import HashMap "mo:base/HashMap";
@@ -14,6 +15,7 @@ import _Option "mo:base/Option";
 import Int "mo:base/Int";
 
 import Types "./types";
+import Migration "./migration";
 
 persistent actor UserManagement {
     
@@ -30,15 +32,22 @@ persistent actor UserManagement {
     type Result<T, E> = Result.Result<T, E>;
     type UserId = Text;
 
-    // STABLE STORAGE - Only arrays can be stable
+    // EXPLICIT MIGRATION SUPPORT
+    type UserV1 = Migration.UserV1;
+    private var migrationCompleted: Bool = false;
+
+    // STABLE STORAGE - maintain your exact structure
     private var userEntries : [(Principal, User)] = [];
     private var walletEntries : [(Principal, Wallet)] = [];
     private var transactionEntries : [(Text, Transaction)] = [];
     private var userIdCounter : Nat = 0;
     private var transactionIdCounter : Nat = 0;
-    private var migrationVersion: Nat = 1;
+    private var _migrationVersion: Nat = 2;
 
-    // RUNTIME STORAGE - These are rebuilt from stable arrays
+    // Add legacy storage for migration
+    private var legacyUserEntries : [(Principal, UserV1)] = [];
+
+    // RUNTIME STORAGE (unchanged)
     private transient var users = HashMap.HashMap<Principal, User>(10, Principal.equal, Principal.hash);
     private transient var wallets = HashMap.HashMap<Principal, Wallet>(10, Principal.equal, Principal.hash);
     private transient var transactions = HashMap.HashMap<Text, Transaction>(50, Text.equal, Text.hash);
@@ -50,20 +59,65 @@ persistent actor UserManagement {
     });
     private transient var userTransactions = HashMap.HashMap<Principal, [Text]>(10, Principal.equal, Principal.hash);
 
-    // Helper function to convert Int to Nat safely
+    // Helper function to convert Int to Nat safely (unchanged)
     private func _intToNat(x: Int) : Nat {
         Int.abs(x)
     };
 
-    // System functions for upgrades
+    // EXPLICIT MIGRATION HANDLER
+    private func performExplicitMigration() {
+        if (migrationCompleted) {
+            Debug.print("✅ Migration already completed");
+            return;
+        };
+
+        Debug.print("🔄 Starting explicit migration...");
+        
+        // If we have legacy entries, migrate them
+        if (legacyUserEntries.size() > 0) {
+            Debug.print("📦 Found " # Nat.toText(legacyUserEntries.size()) # " legacy users to migrate");
+            let migratedEntries = Migration.migrateAllUsers(legacyUserEntries);
+            
+            // Load migrated users into runtime storage
+            users := HashMap.fromIter(migratedEntries.vals(), migratedEntries.size(), Principal.equal, Principal.hash);
+            
+            // Clear legacy storage
+            legacyUserEntries := [];
+            Debug.print("✅ Legacy users migrated successfully");
+        } else {
+            // Try to load current users normally
+            if (userEntries.size() > 0) {
+                users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
+                Debug.print("✅ Current users loaded normally");
+            } else {
+                Debug.print("ℹ️ No users to migrate - starting fresh");
+            };
+        };
+
+        migrationCompleted := true;
+    };
+
+    // System functions with explicit migration
     system func preupgrade() {
-        userEntries := Iter.toArray(users.entries());
+        Debug.print("📦 Pre-upgrade: Preparing stable storage...");
+        
+        // Only save if migration is completed
+        if (migrationCompleted) {
+            userEntries := Iter.toArray(users.entries());
+            Debug.print("📦 Saved " # Nat.toText(userEntries.size()) # " users to stable storage");
+        };
+        
         walletEntries := Iter.toArray(wallets.entries());
         transactionEntries := Iter.toArray(transactions.entries());
     };
 
     system func postupgrade() {
-        users := HashMap.fromIter(userEntries.vals(), userEntries.size(), Principal.equal, Principal.hash);
+        Debug.print("🔄 Post-upgrade: Starting explicit migration...");
+        
+        // Perform explicit migration
+        performExplicitMigration();
+        
+        // Load wallets and transactions normally (these don't need migration)
         wallets := HashMap.fromIter(walletEntries.vals(), walletEntries.size(), Principal.equal, Principal.hash);
         transactions := HashMap.fromIter(transactionEntries.vals(), transactionEntries.size(), Text.equal, Text.hash);
         
@@ -102,6 +156,27 @@ persistent actor UserManagement {
                 userTransactions.put(tx.toPrincipal, recipientTxs);
             };
         };
+
+        Debug.print("✅ Post-upgrade completed successfully");
+    };
+
+    // Migration status endpoint
+    public query func getMigrationStatus() : async {version: Nat; isComplete: Bool; info: Text; userCount: Nat} {
+        let migrationInfo = Migration.getMigrationInfo();
+        {
+            version = migrationInfo.version;
+            isComplete = migrationCompleted;
+            info = migrationInfo.description;
+            userCount = users.size();
+        }
+    };
+
+    // Manual migration trigger (for safety)
+    public shared(_msg) func forceMigration() : async Result<Text, Text> {
+        Debug.print("🔄 Manual migration triggered");
+        performExplicitMigration();
+        let status = if (migrationCompleted) "completed" else "failed";
+        #ok("Migration " # status # " - " # Nat.toText(users.size()) # " users loaded")
     };
 
     // Enhanced user registration with profile data
@@ -940,13 +1015,5 @@ persistent actor UserManagement {
             case null null;
             case (?user) user.profilePicture;
         };
-    };
-
-    // Get migration status
-    public query func getMigrationStatus() : async {version: Nat; isComplete: Bool} {
-        {
-            version = migrationVersion;
-            isComplete = migrationVersion >= 1;
-        }
     };
 }
