@@ -152,7 +152,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   // KYC Status Helper Functions
   const getKYCStatus = () => {
     if (!user) return null;
-    
+
     switch (user.kycStatus) {
       case 'pending':
         return {
@@ -316,16 +316,18 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
           </div>
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-10 w-10 rounded-xl hover:bg-primary/10 transition-all duration-200"
-          >
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-destructive text-destructive-foreground border-2 border-background rounded-full flex items-center justify-center">
-              3
-            </Badge>
-          </Button>
+          <Link href="/dashboard/notifications">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-10 w-10 rounded-xl hover:bg-primary/10 transition-all duration-200"
+            >
+              <Bell className="h-5 w-5" />
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-destructive text-destructive-foreground border-2 border-background rounded-full flex items-center justify-center">
+                3
+              </Badge>
+            </Button>
+          </Link>
 
           {/* User Profile Dropdown */}
           <div className="relative" ref={profileDropdownRef}>
@@ -336,8 +338,8 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
             >
               <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">
                 {profileImageUrl ? (
-                  <AvatarImage 
-                    src={profileImageUrl} 
+                  <AvatarImage
+                    src={profileImageUrl}
                     alt={`${fullName}'s profile`}
                     className="object-cover"
                   />
@@ -356,8 +358,8 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
                       {profileImageUrl ? (
-                        <AvatarImage 
-                          src={profileImageUrl} 
+                        <AvatarImage
+                          src={profileImageUrl}
                           alt={`${fullName}'s profile`}
                           className="object-cover"
                         />
@@ -398,9 +400,14 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                       className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                       onClick={() => setIsProfileOpen(false)}
                     >
-                      <div className={cn("flex items-center justify-center w-8 h-8 rounded-full", 
-                        kycStatus.variant === 'destructive' ? 'bg-destructive/10 text-destructive' : 'bg-muted'
-                      )}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-center w-8 h-8 rounded-full',
+                          kycStatus.variant === 'destructive'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-muted'
+                        )}
+                      >
                         {kycStatus.icon}
                       </div>
                       <div className="flex-1">
