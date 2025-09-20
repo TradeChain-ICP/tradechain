@@ -712,7 +712,7 @@ export default function MarketplacePage() {
                       </div>
                     </CardContent>
                     <div className="p-4 pt-0 flex gap-2">
-                      <Link href={`/product/${product.id}`} className="flex-1">
+                      <Link href={`product/${product.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full bg-transparent">
                           <Eye className="h-4 w-4 mr-2" />
                           View
@@ -801,7 +801,7 @@ export default function MarketplacePage() {
                               )}
                             </div>
                             <div className="flex gap-2">
-                              <Link href={`/product/${product.id}`}>
+                              <Link href={`product/${product.id}`}>
                                 <Button variant="outline" size="sm" className="bg-transparent">
                                   <Eye className="h-4 w-4 mr-2" />
                                   View
@@ -883,7 +883,7 @@ export default function MarketplacePage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Link href={`/product/${product.id}`} className="flex-1">
+                      <Link href={`product/${product.id}`} className="flex-1">
                         <Button variant="outline" className="w-full bg-transparent">
                           View Details
                         </Button>
