@@ -1,9 +1,11 @@
+// data/products.tsx
 export interface Product {
   id: string
   name: string
   category: string
   price: number
   previousPrice?: number
+  originalPrice?: number // Added for marketplace compatibility
   image: string
   rating: number
   reviewCount: number
@@ -17,6 +19,8 @@ export interface Product {
   specifications: Record<string, string>
   tags: string[]
   discount?: number
+  featured?: boolean // Added for featured products
+  createdAt?: string // Added for sorting by newest
 }
 
 export interface Category {
@@ -79,6 +83,7 @@ export const products: Product[] = [
     category: "Precious Metals",
     price: 1950.0,
     previousPrice: 2100.0,
+    originalPrice: 2100.0, // Added for marketplace compatibility
     image: "/placeholder.svg?height=300&width=400",
     rating: 4.8,
     reviewCount: 124,
@@ -99,6 +104,8 @@ export const products: Product[] = [
     },
     tags: ["investment", "precious metals", "gold", "bullion"],
     discount: 7,
+    featured: true, // Added featured flag
+    createdAt: "2024-01-15T10:00:00Z", // Added creation date
   },
   {
     id: "2",
@@ -123,6 +130,8 @@ export const products: Product[] = [
       Mint: "Royal Canadian Mint",
     },
     tags: ["investment", "precious metals", "silver", "bars"],
+    featured: true, // Added featured flag
+    createdAt: "2024-01-20T14:30:00Z", // Added creation date
   },
   {
     id: "3",
@@ -147,6 +156,8 @@ export const products: Product[] = [
       Delivery: "Cushing, Oklahoma",
     },
     tags: ["energy", "oil", "futures", "WTI"],
+    featured: true, // Added featured flag
+    createdAt: "2024-01-25T09:15:00Z", // Added creation date
   },
   {
     id: "4",
@@ -154,6 +165,7 @@ export const products: Product[] = [
     category: "Soft Commodities",
     price: 4.25,
     previousPrice: 4.8,
+    originalPrice: 4.8, // Added for marketplace compatibility
     image: "/placeholder.svg?height=300&width=400",
     rating: 4.7,
     reviewCount: 203,
@@ -173,6 +185,7 @@ export const products: Product[] = [
     },
     tags: ["coffee", "arabica", "premium", "colombia"],
     discount: 11,
+    createdAt: "2024-02-01T11:45:00Z", // Added creation date
   },
   {
     id: "5",
@@ -197,6 +210,7 @@ export const products: Product[] = [
       Standard: "LME Grade A",
     },
     tags: ["copper", "industrial", "cathodes", "grade-a"],
+    createdAt: "2024-02-05T16:20:00Z", // Added creation date
   },
   {
     id: "6",
@@ -221,5 +235,6 @@ export const products: Product[] = [
       "Contract Size": "5,000 bushels",
     },
     tags: ["wheat", "agriculture", "futures", "grain"],
+    createdAt: "2024-02-10T08:00:00Z", // Added creation date
   },
 ]
