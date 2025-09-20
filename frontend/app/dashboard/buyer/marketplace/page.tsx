@@ -1,14 +1,20 @@
 // app/dashboard/buyer/marketplace/page.tsx
-"use client"
+'use client';
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { products, categories } from "@/data/products"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { products, categories } from '@/data/products';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,114 +22,351 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  Search, 
-  Grid3X3, 
-  List, 
-  SlidersHorizontal, 
-  TrendingUp, 
-  Star, 
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Search,
+  Grid3X3,
+  List,
+  SlidersHorizontal,
+  TrendingUp,
+  Star,
   Filter,
   Heart,
   ShoppingCart,
   Eye,
   Zap,
   X,
-  RefreshCw
-} from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useContentPadding } from "@/contexts/sidebar-context"
+  RefreshCw,
+  Plus,
+  Minus,
+} from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useContentPadding } from '@/contexts/sidebar-context';
+import { CartDrawer } from '@/components/cart/cart-drawer';
+
+// Enhanced CartItem interface to match the cart drawer
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  unit: string;
+  image: string;
+  seller: string;
+  category: string;
+  stock: number;
+}
+
+// Cart context type for better type safety
+interface CartContextType {
+  items: CartItem[];
+  addItem: (product: any, quantity?: number) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (id: string) => void;
+  clearCart: () => void;
+  totalItems: number;
+  subtotal: number;
+}
 
 export default function MarketplacePage() {
-  const { contentPadding } = useContentPadding()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [sortBy, setSortBy] = useState("featured")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [priceRange, setPriceRange] = useState("all")
-  const [showAIInsights, setShowAIInsights] = useState(true)
-  const [favorites, setFavorites] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
+  const { contentPadding } = useContentPadding();
+  const { toast } = useToast();
 
-  const handleAddToCart = (productId: string, productName: string) => {
-    toast({
-      title: "Added to Cart",
-      description: `${productName} has been added to your cart.`,
-    })
-  }
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('featured');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [priceRange, setPriceRange] = useState('all');
+  const [showAIInsights, setShowAIInsights] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAddToFavorites = (productId: string, productName: string) => {
-    setFavorites(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    )
-    
+  // Cart state management
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+
+  // Computed cart values
+  const totalItems = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  );
+
+  const subtotal = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cartItems]
+  );
+
+  // Cart management functions
+  const addToCart = useCallback(
+    (product: any, quantity: number = 1) => {
+      const existingItem = cartItems.find((item) => item.id === product.id);
+
+      if (existingItem) {
+        // Update quantity if item already exists
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > product.stockQuantity) {
+          toast({
+            title: 'Stock Limit Reached',
+            description: `Only ${product.stockQuantity} items available in stock.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setCartItems((prev) =>
+          prev.map((item) => (item.id === product.id ? { ...item, quantity: newQuantity } : item))
+        );
+      } else {
+        // Add new item to cart
+        if (quantity > product.stockQuantity) {
+          toast({
+            title: 'Stock Limit Reached',
+            description: `Only ${product.stockQuantity} items available in stock.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const cartItem: CartItem = {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity,
+          unit: product.unit || 'each',
+          image: product.image,
+          seller: product.seller,
+          category: product.category,
+          stock: product.stockQuantity,
+        };
+
+        setCartItems((prev) => [...prev, cartItem]);
+      }
+
+      // Show success toast and open cart drawer
+      toast({
+        title: 'Added to Cart',
+        description: `${product.name} has been added to your cart.`,
+      });
+
+      // Open cart drawer briefly to show the item was added
+      setCartDrawerOpen(true);
+    },
+    [cartItems, toast]
+  );
+
+  const updateCartQuantity = useCallback(
+    (id: string, newQuantity: number) => {
+      if (newQuantity <= 0) {
+        removeFromCart(id);
+        return;
+      }
+
+      const item = cartItems.find((item) => item.id === id);
+      if (item && newQuantity > item.stock) {
+        toast({
+          title: 'Stock Limit Reached',
+          description: `Only ${item.stock} items available in stock.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setCartItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item))
+      );
+    },
+    [cartItems, toast]
+  );
+
+  const removeFromCart = useCallback(
+    (id: string) => {
+      const item = cartItems.find((item) => item.id === id);
+      setCartItems((prev) => prev.filter((item) => item.id !== id));
+
+      if (item) {
+        toast({
+          title: 'Item Removed',
+          description: `${item.name} has been removed from your cart.`,
+        });
+      }
+    },
+    [cartItems, toast]
+  );
+
+  const clearCart = useCallback(() => {
+    setCartItems([]);
     toast({
-      title: favorites.includes(productId) ? "Removed from Favorites" : "Added to Favorites",
-      description: favorites.includes(productId) 
-        ? `${productName} removed from your favorites.`
-        : `${productName} added to your favorites.`,
-    })
-  }
+      title: 'Cart Cleared',
+      description: 'All items have been removed from your cart.',
+    });
+  }, [toast]);
+
+  // Other handlers
+  const handleAddToFavorites = useCallback(
+    (productId: string, productName: string) => {
+      setFavorites((prev) =>
+        prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+      );
+
+      toast({
+        title: favorites.includes(productId) ? 'Removed from Favorites' : 'Added to Favorites',
+        description: favorites.includes(productId)
+          ? `${productName} removed from your favorites.`
+          : `${productName} added to your favorites.`,
+      });
+    },
+    [favorites, toast]
+  );
 
   const handleRefresh = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       toast({
-        title: "Market Data Updated",
-        description: "Latest commodity prices and listings have been refreshed.",
-      })
+        title: 'Market Data Updated',
+        description: 'Latest commodity prices and listings have been refreshed.',
+      });
     } catch (error) {
       toast({
-        title: "Refresh Failed",
-        description: "Failed to update market data.",
-        variant: "destructive",
-      })
+        title: 'Refresh Failed',
+        description: 'Failed to update market data.',
+        variant: 'destructive',
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  // Product filtering and sorting
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.seller.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price
-      case "price-high":
-        return b.price - a.price
-      case "rating":
-        return (b.rating || 0) - (a.rating || 0)
-      case "newest":
-        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
-      default:
-        return 0
+      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+
+      const matchesPriceRange = (() => {
+        switch (priceRange) {
+          case 'under-100':
+            return product.price < 100;
+          case '100-1000':
+            return product.price >= 100 && product.price <= 1000;
+          case '1000-5000':
+            return product.price > 1000 && product.price <= 5000;
+          case 'over-5000':
+            return product.price > 5000;
+          default:
+            return true;
+        }
+      })();
+
+      return matchesSearch && matchesCategory && matchesPriceRange;
+    });
+  }, [searchQuery, selectedCategory, priceRange]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      switch (sortBy) {
+        case 'price-low':
+          return a.price - b.price;
+        case 'price-high':
+          return b.price - a.price;
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'newest':
+          return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime();
+        case 'name':
+          return a.name.localeCompare(b.name);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredProducts, sortBy]);
+
+  const featuredProducts = useMemo(
+    () => products.filter((product) => product.featured).slice(0, 6),
+    []
+  );
+
+  const trendingCategories = useMemo(() => categories.slice(0, 4), []);
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setPriceRange('all');
+    setSortBy('featured');
+  }, []);
+
+  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || priceRange !== 'all';
+
+  // Quick add to cart with quantity selector
+  const QuickAddButton = ({ product }: { product: any }) => {
+    const [quantity, setQuantity] = useState(1);
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    if (!isExpanded) {
+      return (
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={() => {
+            if (product.inStock) {
+              addToCart(product, 1);
+            } else {
+              toast({
+                title: 'Out of Stock',
+                description: 'This item is currently out of stock.',
+                variant: 'destructive',
+              });
+            }
+          }}
+          disabled={!product.inStock}
+        >
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+        </Button>
+      );
     }
-  })
 
-  const featuredProducts = products.slice(0, 3)
-  const trendingCategories = categories.slice(0, 4)
-
-  const clearAllFilters = () => {
-    setSearchQuery("")
-    setSelectedCategory("all")
-    setPriceRange("all")
-    setSortBy("featured")
-  }
-
-  const hasActiveFilters = searchQuery || selectedCategory !== "all" || priceRange !== "all"
+    return (
+      <div className="flex-1 flex items-center gap-1 border rounded-md p-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+          className="h-6 w-6 p-0"
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <span className="text-sm font-medium px-2 min-w-[2rem] text-center">{quantity}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
+          className="h-6 w-6 p-0"
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            addToCart(product, quantity);
+            setIsExpanded(false);
+            setQuantity(1);
+          }}
+          disabled={!product.inStock}
+          className="ml-1"
+        >
+          Add
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className={`py-6 pb-20 lg:pb-8 ${contentPadding}`}>
@@ -137,21 +380,38 @@ export default function MarketplacePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh} 
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
               disabled={isLoading}
               className="bg-transparent"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Link href="/dashboard/buyer/cart">
-              <Button variant="outline" className="bg-transparent">
+
+            {/* Cart Button with Drawer */}
+            <CartDrawer
+              cartItems={cartItems}
+              onUpdateQuantity={updateCartQuantity}
+              onRemoveItem={removeFromCart}
+              onClearCart={clearCart}
+              isOpen={cartDrawerOpen}
+              onOpenChange={setCartDrawerOpen}
+            >
+              <Button variant="outline" className="bg-transparent relative">
                 <ShoppingCart className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Cart</span>
+                {totalItems > 0 && (
+                  <Badge
+                    className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    variant="destructive"
+                  >
+                    {totalItems > 99 ? '99+' : totalItems}
+                  </Badge>
+                )}
               </Button>
-            </Link>
+            </CartDrawer>
           </div>
         </div>
 
@@ -167,21 +427,28 @@ export default function MarketplacePage() {
                   <div>
                     <h4 className="font-medium text-blue-900">AI Market Insights</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                      Gold prices are up 2.3% today. Silver showing strong momentum. Consider diversifying with agricultural commodities.
+                      Gold prices are up 2.3% today. Silver showing strong momentum. Consider
+                      diversifying with agricultural commodities.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
-                      <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-100 text-blue-700 border-blue-300"
+                      >
                         📈 Gold trending up
                       </Badge>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-100 text-blue-700 border-blue-300"
+                      >
                         🌾 Wheat demand rising
                       </Badge>
                     </div>
                   </div>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowAIInsights(false)}
                   className="text-blue-600 hover:bg-blue-100"
                 >
@@ -247,6 +514,7 @@ export default function MarketplacePage() {
                       <SelectItem value="price-high">Price: High to Low</SelectItem>
                       <SelectItem value="rating">Highest Rated</SelectItem>
                       <SelectItem value="newest">Newest</SelectItem>
+                      <SelectItem value="name">Name A-Z</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -271,17 +539,17 @@ export default function MarketplacePage() {
 
                   <div className="flex items-center border rounded-md">
                     <Button
-                      variant={viewMode === "grid" ? "secondary" : "ghost"}
+                      variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                       size="icon"
-                      onClick={() => setViewMode("grid")}
+                      onClick={() => setViewMode('grid')}
                       className="rounded-r-none"
                     >
                       <Grid3X3 className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                       size="icon"
-                      onClick={() => setViewMode("list")}
+                      onClick={() => setViewMode('list')}
                       className="rounded-l-none"
                     >
                       <List className="h-4 w-4" />
@@ -309,11 +577,11 @@ export default function MarketplacePage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm text-muted-foreground">Active filters:</span>
-                    {selectedCategory !== "all" && (
+                    {selectedCategory !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
                         {selectedCategory}
                         <button
-                          onClick={() => setSelectedCategory("all")}
+                          onClick={() => setSelectedCategory('all')}
                           className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
                         >
                           <X className="h-3 w-3" />
@@ -324,18 +592,18 @@ export default function MarketplacePage() {
                       <Badge variant="secondary" className="gap-1">
                         "{searchQuery}"
                         <button
-                          onClick={() => setSearchQuery("")}
+                          onClick={() => setSearchQuery('')}
                           className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </Badge>
                     )}
-                    {priceRange !== "all" && (
+                    {priceRange !== 'all' && (
                       <Badge variant="secondary" className="gap-1">
-                        {priceRange.replace("-", " - $")}
+                        {priceRange.replace('-', ' - $')}
                         <button
-                          onClick={() => setPriceRange("all")}
+                          onClick={() => setPriceRange('all')}
                           className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
                         >
                           <X className="h-3 w-3" />
@@ -357,21 +625,22 @@ export default function MarketplacePage() {
               Showing {sortedProducts.length} of {products.length} products
             </p>
             {sortedProducts.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Sorted by {sortBy.replace('-', ' ')}
-              </p>
+              <p className="text-sm text-muted-foreground">Sorted by {sortBy.replace('-', ' ')}</p>
             )}
           </div>
 
           {/* Products Display */}
           {sortedProducts.length > 0 ? (
-            viewMode === "grid" ? (
+            viewMode === 'grid' ? (
               <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {sortedProducts.map((product) => (
-                  <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                  <Card
+                    key={product.id}
+                    className="overflow-hidden hover:shadow-lg transition-shadow group"
+                  >
                     <div className="relative aspect-square overflow-hidden">
                       <Image
-                        src={product.image || "/placeholder.svg?height=300&width=300"}
+                        src={product.image || '/placeholder.svg?height=300&width=300'}
                         alt={product.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -383,8 +652,10 @@ export default function MarketplacePage() {
                           className="h-8 w-8 bg-white/80 hover:bg-white"
                           onClick={() => handleAddToFavorites(product.id, product.name)}
                         >
-                          <Heart 
-                            className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} 
+                          <Heart
+                            className={`h-4 w-4 ${
+                              favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''
+                            }`}
                           />
                         </Button>
                       </div>
@@ -393,6 +664,11 @@ export default function MarketplacePage() {
                           <Star className="mr-1 h-3 w-3" />
                           Featured
                         </Badge>
+                      )}
+                      {!product.inStock && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <Badge variant="destructive">Out of Stock</Badge>
+                        </div>
                       )}
                     </div>
                     <CardContent className="p-4">
@@ -404,7 +680,9 @@ export default function MarketplacePage() {
                           {product.rating && (
                             <div className="flex items-center gap-1">
                               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs text-muted-foreground">{product.rating}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {product.rating}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -414,15 +692,21 @@ export default function MarketplacePage() {
                         </p>
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="text-lg font-bold">${product.price}</div>
+                            <div className="text-lg font-bold">
+                              ${product.price.toLocaleString()}
+                            </div>
                             {product.originalPrice && product.originalPrice > product.price && (
                               <div className="text-sm text-muted-foreground line-through">
-                                ${product.originalPrice}
+                                ${product.originalPrice.toLocaleString()}
                               </div>
                             )}
+                            <div className="text-xs text-muted-foreground">per {product.unit}</div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {product.seller}
+                          <div className="text-xs text-muted-foreground text-right">
+                            <div>{product.seller}</div>
+                            {product.inStock && (
+                              <div className="text-green-600">Stock: {product.stockQuantity}</div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -434,14 +718,7 @@ export default function MarketplacePage() {
                           View
                         </Button>
                       </Link>
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleAddToCart(product.id, product.name)}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Add to Cart
-                      </Button>
+                      <QuickAddButton product={product} />
                     </div>
                   </Card>
                 ))}
@@ -449,12 +726,15 @@ export default function MarketplacePage() {
             ) : (
               <div className="space-y-4">
                 {sortedProducts.map((product) => (
-                  <Card key={product.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <Card
+                    key={product.id}
+                    className="overflow-hidden hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex gap-4">
                         <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg">
                           <Image
-                            src={product.image || "/placeholder.svg?height=96&width=96"}
+                            src={product.image || '/placeholder.svg?height=96&width=96'}
                             alt={product.name}
                             fill
                             className="object-cover"
@@ -463,6 +743,13 @@ export default function MarketplacePage() {
                             <Badge className="absolute -top-1 -right-1 bg-yellow-500 text-yellow-900 text-xs">
                               <Star className="h-3 w-3" />
                             </Badge>
+                          )}
+                          {!product.inStock && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <Badge variant="destructive" className="text-xs">
+                                Out of Stock
+                              </Badge>
+                            </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -475,7 +762,9 @@ export default function MarketplacePage() {
                                 {product.rating && (
                                   <div className="flex items-center gap-1">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                    <span className="text-xs text-muted-foreground">{product.rating}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {product.rating}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -490,17 +779,26 @@ export default function MarketplacePage() {
                               className="ml-2"
                               onClick={() => handleAddToFavorites(product.id, product.name)}
                             >
-                              <Heart 
-                                className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} 
+                              <Heart
+                                className={`h-4 w-4 ${
+                                  favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''
+                                }`}
                               />
                             </Button>
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="text-lg font-bold">${product.price}</div>
-                              <div className="text-xs text-muted-foreground">
-                                by {product.seller}
+                              <div className="text-lg font-bold">
+                                ${product.price.toLocaleString()}
                               </div>
+                              <div className="text-xs text-muted-foreground">
+                                per {product.unit} • by {product.seller}
+                              </div>
+                              {product.inStock && (
+                                <div className="text-xs text-green-600">
+                                  Stock: {product.stockQuantity}
+                                </div>
+                              )}
                             </div>
                             <div className="flex gap-2">
                               <Link href={`/product/${product.id}`}>
@@ -509,13 +807,7 @@ export default function MarketplacePage() {
                                   View
                                 </Button>
                               </Link>
-                              <Button 
-                                size="sm"
-                                onClick={() => handleAddToCart(product.id, product.name)}
-                              >
-                                <ShoppingCart className="h-4 w-4 mr-2" />
-                                Add to Cart
-                              </Button>
+                              <QuickAddButton product={product} />
                             </div>
                           </div>
                         </div>
@@ -542,6 +834,12 @@ export default function MarketplacePage() {
             {featuredProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="aspect-video relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900">
+                  <Image
+                    src={product.image || '/placeholder.svg?height=200&width=300'}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
                   <Badge className="absolute top-2 left-2 bg-yellow-500 text-yellow-900">
                     <Star className="mr-1 h-3 w-3" />
                     Featured
@@ -552,10 +850,17 @@ export default function MarketplacePage() {
                     className="absolute top-2 right-2 h-8 w-8 bg-white/80 hover:bg-white"
                     onClick={() => handleAddToFavorites(product.id, product.name)}
                   >
-                    <Heart 
-                      className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} 
+                    <Heart
+                      className={`h-4 w-4 ${
+                        favorites.includes(product.id) ? 'fill-red-500 text-red-500' : ''
+                      }`}
                     />
                   </Button>
+                  {!product.inStock && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <Badge variant="destructive">Out of Stock</Badge>
+                    </div>
+                  )}
                 </div>
                 <CardHeader>
                   <CardTitle className="line-clamp-1">{product.name}</CardTitle>
@@ -564,11 +869,33 @@ export default function MarketplacePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="text-2xl font-bold">${product.price}</div>
-                    <Button onClick={() => handleAddToCart(product.id, product.name)}>
-                      Add to Cart
-                    </Button>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-2xl font-bold">${product.price.toLocaleString()}</div>
+                        <div className="text-sm text-muted-foreground">per {product.unit}</div>
+                      </div>
+                      {product.rating && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium">{product.rating}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Link href={`/product/${product.id}`} className="flex-1">
+                        <Button variant="outline" className="w-full bg-transparent">
+                          View Details
+                        </Button>
+                      </Link>
+                      <Button
+                        className="flex-1"
+                        onClick={() => addToCart(product, 1)}
+                        disabled={!product.inStock}
+                      >
+                        {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -579,11 +906,26 @@ export default function MarketplacePage() {
         <TabsContent value="trending" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {trendingCategories.map((category) => (
-              <Card 
-                key={category.id} 
+              <Card
+                key={category.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow group"
-                onClick={() => setSelectedCategory(category.name)}
+                onClick={() => {
+                  setSelectedCategory(category.name);
+                  // Switch to browse tab to show filtered results
+                  const tabsTrigger = document.querySelector('[value="browse"]') as HTMLElement;
+                  if (tabsTrigger) {
+                    tabsTrigger.click();
+                  }
+                }}
               >
+                <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-primary/10 to-primary/20">
+                  <Image
+                    src={category.image || '/placeholder.svg?height=200&width=200'}
+                    alt={category.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg group-hover:text-primary transition-colors">
@@ -622,6 +964,32 @@ export default function MarketplacePage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Cart Summary Footer for Mobile */}
+      {totalItems > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-background border-t p-4 z-40">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-medium">
+                {totalItems} item{totalItems !== 1 ? 's' : ''}
+              </div>
+              <div className="text-sm text-muted-foreground">${subtotal.toLocaleString()}</div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setCartDrawerOpen(true)}
+                className="bg-transparent"
+              >
+                View Cart
+              </Button>
+              <Link href="/checkout">
+                <Button>Checkout</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
