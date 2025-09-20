@@ -1,143 +1,179 @@
 // components/cart/cart-drawer.tsx
-"use client"
+'use client';
 
-import type React from "react"
-import { useState, useEffect, useMemo } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { ShoppingCart, X, Plus, Minus, Trash2, ArrowRight, Package, AlertCircle } from "lucide-react"
+import type React from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import {
+  ShoppingCart,
+  X,
+  Plus,
+  Minus,
+  Trash2,
+  ArrowRight,
+  Package,
+  AlertCircle,
+} from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useToast } from "@/components/ui/use-toast"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface CartItem {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  unit: string
-  image: string
-  seller: string
-  category: string
-  stock: number
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  unit: string;
+  image: string;
+  seller: string;
+  category: string;
+  stock: number;
 }
 
 interface CartDrawerProps {
-  children: React.ReactNode
-  cartItems: CartItem[]
-  onUpdateQuantity: (id: string, quantity: number) => void
-  onRemoveItem: (id: string) => void
-  onClearCart: () => void
-  isOpen?: boolean
-  onOpenChange?: (open: boolean) => void
+  children: React.ReactNode;
+  cartItems: CartItem[];
+  onUpdateQuantity: (id: string, quantity: number) => void;
+  onRemoveItem: (id: string) => void;
+  onClearCart: () => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CartDrawer({ 
-  children, 
+export function CartDrawer({
+  children,
   cartItems = [],
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
   isOpen = false,
-  onOpenChange
+  onOpenChange,
 }: CartDrawerProps) {
-  const { toast } = useToast()
-  const [localOpen, setLocalOpen] = useState(false)
-  const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const { toast } = useToast();
+  const [localOpen, setLocalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  // Dialog states for confirmations
+  const [itemToRemove, setItemToRemove] = useState<CartItem | null>(null);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   // Use controlled or uncontrolled state based on props
-  const open = onOpenChange ? isOpen : localOpen
-  const setOpen = onOpenChange || setLocalOpen
+  const open = onOpenChange ? isOpen : localOpen;
+  const setOpen = onOpenChange || setLocalOpen;
 
   // Auto-close drawer after successful actions
   useEffect(() => {
     if (cartItems.length === 0 && open) {
-      const timer = setTimeout(() => setOpen(false), 1500)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setOpen(false), 1500);
+      return () => clearTimeout(timer);
     }
-  }, [cartItems.length, open, setOpen])
+  }, [cartItems.length, open, setOpen]);
 
   // Computed values
-  const totalItems = useMemo(() => 
-    cartItems.reduce((sum, item) => sum + item.quantity, 0), [cartItems]
-  )
-  
-  const subtotal = useMemo(() => 
-    cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]
-  )
-  
-  const shipping = useMemo(() => subtotal > 1000 ? 0 : 25, [subtotal])
-  const tax = useMemo(() => subtotal * 0.08, [subtotal])
-  const total = useMemo(() => subtotal + shipping + tax, [subtotal, shipping, tax])
+  const totalItems = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  );
+
+  const subtotal = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cartItems]
+  );
+
+  const shipping = useMemo(() => (subtotal > 1000 ? 0 : 25), [subtotal]);
+  const tax = useMemo(() => subtotal * 0.08, [subtotal]);
+  const total = useMemo(() => subtotal + shipping + tax, [subtotal, shipping, tax]);
 
   // Check for out of stock items
-  const outOfStockItems = useMemo(() => 
-    cartItems.filter(item => item.quantity > item.stock), [cartItems]
-  )
+  const outOfStockItems = useMemo(
+    () => cartItems.filter((item) => item.quantity > item.stock),
+    [cartItems]
+  );
 
-  const hasOutOfStockItems = outOfStockItems.length > 0
+  const hasOutOfStockItems = outOfStockItems.length > 0;
 
   // Enhanced quantity update with optimistic updates
   const handleUpdateQuantity = async (id: string, newQuantity: number) => {
-    if (isUpdating === id) return
+    if (isUpdating === id) return;
 
-    setIsUpdating(id)
-    
+    setIsUpdating(id);
+
     try {
       // Add a small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 200))
-      onUpdateQuantity(id, newQuantity)
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      onUpdateQuantity(id, newQuantity);
     } catch (error) {
       toast({
-        title: "Update Failed",
-        description: "Failed to update item quantity. Please try again.",
-        variant: "destructive",
-      })
+        title: 'Update Failed',
+        description: 'Failed to update item quantity. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
-      setIsUpdating(null)
+      setIsUpdating(null);
     }
-  }
+  };
 
-  // Enhanced remove item with confirmation for expensive items
+  // Enhanced remove item with proper dialog confirmation
   const handleRemoveItem = (item: CartItem) => {
-    if (item.price * item.quantity > 1000) {
-      // Show confirmation for expensive items
-      if (!confirm(`Are you sure you want to remove ${item.name} (${(item.price * item.quantity).toLocaleString()} value) from your cart?`)) {
-        return
-      }
-    }
-    onRemoveItem(item.id)
-  }
+    setItemToRemove(item);
+  };
 
-  // Clear cart with confirmation
-  const handleClearCart = () => {
-    if (cartItems.length === 0) return
-    
-    if (confirm(`Are you sure you want to remove all ${totalItems} items from your cart?`)) {
-      onClearCart()
+  const confirmRemoveItem = () => {
+    if (itemToRemove) {
+      onRemoveItem(itemToRemove.id);
+      setItemToRemove(null);
     }
-  }
+  };
+
+  // Clear cart with proper dialog confirmation
+  const handleClearCart = () => {
+    if (cartItems.length === 0) return;
+    setShowClearDialog(true);
+  };
+
+  const confirmClearCart = () => {
+    onClearCart();
+    setShowClearDialog(false);
+  };
 
   // Quick fix for out of stock items
   const handleFixOutOfStock = () => {
-    outOfStockItems.forEach(item => {
+    outOfStockItems.forEach((item) => {
       if (item.stock > 0) {
-        onUpdateQuantity(item.id, item.stock)
+        onUpdateQuantity(item.id, item.stock);
       } else {
-        onRemoveItem(item.id)
+        onRemoveItem(item.id);
       }
-    })
-    
+    });
+
     toast({
-      title: "Cart Updated",
-      description: "Out of stock items have been adjusted.",
-    })
-  }
+      title: 'Cart Updated',
+      description: 'Out of stock items have been adjusted.',
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -149,7 +185,7 @@ export function CartDrawer({
               className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
               variant="destructive"
             >
-              {totalItems > 99 ? "99+" : totalItems}
+              {totalItems > 99 ? '99+' : totalItems}
             </Badge>
           )}
         </div>
@@ -161,15 +197,14 @@ export function CartDrawer({
             Shopping Cart
             {totalItems > 0 && (
               <Badge variant="secondary" className="ml-auto">
-                {totalItems} {totalItems === 1 ? "item" : "items"}
+                {totalItems} {totalItems === 1 ? 'item' : 'items'}
               </Badge>
             )}
           </SheetTitle>
           <SheetDescription>
-            {cartItems.length === 0 
-              ? "Your cart is empty" 
-              : "Review your items and proceed to checkout"
-            }
+            {cartItems.length === 0
+              ? 'Your cart is empty'
+              : 'Review your items and proceed to checkout'}
           </SheetDescription>
         </SheetHeader>
 
@@ -180,7 +215,8 @@ export function CartDrawer({
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex items-center justify-between">
                 <span className="text-sm">
-                  {outOfStockItems.length} item{outOfStockItems.length > 1 ? 's' : ''} exceed{outOfStockItems.length === 1 ? 's' : ''} available stock
+                  {outOfStockItems.length} item{outOfStockItems.length > 1 ? 's' : ''} exceed
+                  {outOfStockItems.length === 1 ? 's' : ''} available stock
                 </span>
                 <Button size="sm" variant="outline" onClick={handleFixOutOfStock}>
                   Fix
@@ -207,20 +243,20 @@ export function CartDrawer({
             ) : (
               <div className="space-y-4 pb-4">
                 {cartItems.map((item) => {
-                  const isItemUpdating = isUpdating === item.id
-                  const isOutOfStock = item.quantity > item.stock
-                  const itemTotal = item.price * item.quantity
+                  const isItemUpdating = isUpdating === item.id;
+                  const isOutOfStock = item.quantity > item.stock;
+                  const itemTotal = item.price * item.quantity;
 
                   return (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className={`flex gap-3 p-3 border rounded-lg transition-colors ${
                         isOutOfStock ? 'border-yellow-300 bg-yellow-50' : ''
                       } ${isItemUpdating ? 'opacity-50' : ''}`}
                     >
                       <div className="relative h-16 w-16 flex-shrink-0">
                         <Image
-                          src={item.image || "/placeholder.svg"}
+                          src={item.image || '/placeholder.svg'}
                           alt={item.name}
                           fill
                           className="object-cover rounded-md"
@@ -231,7 +267,7 @@ export function CartDrawer({
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
@@ -241,7 +277,11 @@ export function CartDrawer({
                               <Badge variant="outline" className="text-xs">
                                 {item.category}
                               </Badge>
-                              <span className={`text-xs ${isOutOfStock ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+                              <span
+                                className={`text-xs ${
+                                  isOutOfStock ? 'text-yellow-600' : 'text-muted-foreground'
+                                }`}
+                              >
                                 Stock: {item.stock}
                               </span>
                             </div>
@@ -274,7 +314,7 @@ export function CartDrawer({
                               <Minus className="h-3 w-3" />
                             </Button>
                             <span className="text-sm font-medium w-8 text-center">
-                              {isItemUpdating ? "..." : item.quantity}
+                              {isItemUpdating ? '...' : item.quantity}
                             </span>
                             <Button
                               variant="outline"
@@ -287,9 +327,7 @@ export function CartDrawer({
                             </Button>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium text-sm">
-                              ${itemTotal.toLocaleString()}
-                            </div>
+                            <div className="font-medium text-sm">${itemTotal.toLocaleString()}</div>
                             <div className="text-xs text-muted-foreground">
                               ${item.price.toLocaleString()} per {item.unit}
                             </div>
@@ -297,7 +335,7 @@ export function CartDrawer({
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -313,7 +351,7 @@ export function CartDrawer({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Shipping</span>
-                  <span>{shipping === 0 ? "Free" : `$${shipping}`}</span>
+                  <span>{shipping === 0 ? 'Free' : `${shipping}`}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax (8%)</span>
@@ -336,11 +374,12 @@ export function CartDrawer({
               ) : (
                 <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
                   <p className="text-sm text-blue-700">
-                    Add <span className="font-medium">${(1000 - subtotal).toFixed(2)}</span> more for free shipping
+                    Add <span className="font-medium">${(1000 - subtotal).toFixed(2)}</span> more
+                    for free shipping
                   </p>
                   <div className="w-full bg-blue-100 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${Math.min((subtotal / 1000) * 100, 100)}%` }}
                     />
                   </div>
@@ -356,16 +395,13 @@ export function CartDrawer({
                     </Button>
                   </Link>
                   <Link href="/checkout" onClick={() => setOpen(false)} className="flex-1">
-                    <Button 
-                      className="w-full" 
-                      disabled={hasOutOfStockItems}
-                    >
+                    <Button className="w-full" disabled={hasOutOfStockItems}>
                       Checkout
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </Link>
                 </div>
-                
+
                 {hasOutOfStockItems && (
                   <p className="text-xs text-yellow-600 text-center">
                     Please fix out of stock items before checkout
@@ -388,7 +424,62 @@ export function CartDrawer({
             </div>
           )}
         </div>
+
+        {/* Remove Item Confirmation Dialog */}
+        <AlertDialog open={!!itemToRemove} onOpenChange={() => setItemToRemove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Item from Cart</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove{' '}
+                <span className="font-medium">{itemToRemove?.name}</span> from your cart?
+                {itemToRemove && itemToRemove.price * itemToRemove.quantity > 1000 && (
+                  <span className="block mt-2 text-amber-600">
+                    This item has a value of $
+                    {(itemToRemove.price * itemToRemove.quantity).toLocaleString()}.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmRemoveItem}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove Item
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Clear Cart Confirmation Dialog */}
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear Shopping Cart</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove all {totalItems} items from your cart? This action
+                cannot be undone.
+                {subtotal > 500 && (
+                  <span className="block mt-2 text-amber-600">
+                    Your cart contains items worth ${subtotal.toLocaleString()}.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep Items</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmClearCart}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Clear Cart
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
-  )
+  );
 }
