@@ -63,3 +63,5 @@ build/
 # Environment files (optional, if you use these)
 .env
 .env.*
+
+.claude
