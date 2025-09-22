@@ -358,7 +358,7 @@ export default function CategorySlugPage({ slug }: CategorySlugProps) {
                 <Checkbox
                   id="inStock"
                   checked={showInStockOnly}
-                  onCheckedChange={setShowInStockOnly}
+                  onCheckedChange={(checked) => setShowInStockOnly(checked === true)}
                 />
                 <Label htmlFor="inStock">In stock only</Label>
               </div>
@@ -368,7 +368,7 @@ export default function CategorySlugPage({ slug }: CategorySlugProps) {
                 <Checkbox
                   id="verified"
                   checked={showVerifiedOnly}
-                  onCheckedChange={setShowVerifiedOnly}
+                  onCheckedChange={(checked) => setShowVerifiedOnly(checked === true)}
                 />
                 <Label htmlFor="verified">Verified sellers only</Label>
               </div>
