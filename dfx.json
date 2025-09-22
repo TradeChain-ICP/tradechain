@@ -12,7 +12,7 @@
 		"frontend": {
 			"type": "assets",
 			"source": [
-				"frontend/out"
+				"frontend/.next"
 			]
 		}
 	},

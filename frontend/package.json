@@ -6,9 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start",
-    "deploy:local": "npm run build && dfx deploy frontend --network local",
-    "deploy:ic": "../scripts/deploy-frontend-to-icp.sh"
+    "start": "next start"
   },
   "dependencies": {
     "@auth/core": "latest",
@@ -74,6 +72,7 @@
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "cross-env": "^10.0.0",
     "postcss": "^8.4.48",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
