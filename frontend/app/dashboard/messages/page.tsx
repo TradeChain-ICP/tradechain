@@ -68,7 +68,7 @@ interface Conversation {
   priority: 'high' | 'normal' | 'low';
 }
 
-export default function SellerMessagesPage() {
+export default function MessagesPage() {
   const { user } = useAuth();
   const { contentPadding } = useContentPadding();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -356,7 +356,9 @@ export default function SellerMessagesPage() {
           {/* Header */}
           <div className="p-4 border-b bg-background/95">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-lg">Customer Messages</h2>
+              <h2 className="font-semibold text-lg">
+                {user?.role === 'seller' ? 'Customer Messages' : 'Seller Messages'}
+              </h2>
               <Badge variant="secondary" className="text-xs">
                 {conversations.reduce((acc, conv) => acc + conv.unreadCount, 0)} unread
               </Badge>
@@ -366,7 +368,7 @@ export default function SellerMessagesPage() {
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search customers..."
+                placeholder={user?.role === 'seller' ? 'Search customers...' : 'Search sellers...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-9 text-sm"
@@ -526,10 +528,16 @@ export default function SellerMessagesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem>View Customer Profile</DropdownMenuItem>
+                        <DropdownMenuItem>
+                          View {selectedConv.participant.role === 'buyer' ? 'Customer' : 'Seller'} Profile
+                        </DropdownMenuItem>
                         <DropdownMenuItem>View Order History</DropdownMenuItem>
-                        <DropdownMenuItem>Create Quote</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">Block Customer</DropdownMenuItem>
+                        {user?.role === 'seller' && (
+                          <DropdownMenuItem>Create Quote</DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem className="text-red-600">
+                          Block {selectedConv.participant.role === 'buyer' ? 'Customer' : 'Seller'}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -658,7 +666,7 @@ export default function SellerMessagesPage() {
                 <div>
                   <h3 className="font-medium">Select a conversation</h3>
                   <p className="text-sm text-muted-foreground">
-                    Choose a customer to start messaging
+                    Choose a {user?.role === 'seller' ? 'customer' : 'seller'} to start messaging
                   </p>
                 </div>
               </div>

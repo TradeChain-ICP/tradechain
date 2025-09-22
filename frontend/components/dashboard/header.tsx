@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { CartDrawer } from '@/components/cart/cart-drawer';
 import { useSidebar } from '@/contexts/sidebar-context';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -48,6 +49,32 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cart state for buyers
+  const [cartItems, setCartItems] = useState([
+    {
+      id: '1',
+      name: 'Gold Bullion - 1oz American Eagle',
+      price: 1950.0,
+      quantity: 2,
+      unit: 'oz',
+      image: '/placeholder.svg?height=60&width=60',
+      seller: 'Premium Metals Co.',
+      category: 'Precious Metals',
+      stock: 50,
+    },
+    {
+      id: '2',
+      name: 'Silver Bars - 10oz',
+      price: 280.0,
+      quantity: 1,
+      unit: 'bar',
+      image: '/placeholder.svg?height=60&width=60',
+      seller: 'Silver Traders Inc.',
+      category: 'Precious Metals',
+      stock: 25,
+    },
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -148,6 +175,26 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
       setSearchQuery('');
     }
   };
+
+  // Cart handlers for buyers
+  const handleUpdateQuantity = (id: string, quantity: number) => {
+    setCartItems(prev =>
+      prev.map(item =>
+        item.id === id ? { ...item, quantity: Math.max(0, quantity) } : item
+      ).filter(item => item.quantity > 0)
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
+
+  // Calculate total cart items
+  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // KYC Status Helper Functions
   const getKYCStatus = () => {
@@ -295,19 +342,25 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
 
           {/* Shopping Cart - Only for buyers */}
           {user?.role === 'buyer' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-10 w-10 rounded-xl hover:bg-primary/10 transition-all duration-200"
-              asChild
+            <CartDrawer
+              cartItems={cartItems}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onClearCart={handleClearCart}
             >
-              <Link href="/dashboard/buyer/cart">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10 rounded-xl hover:bg-primary/10 transition-all duration-200"
+              >
                 <ShoppingCart className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-destructive text-destructive-foreground border-2 border-background rounded-full flex items-center justify-center">
-                  3
-                </Badge>
-              </Link>
-            </Button>
+                {totalCartItems > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-destructive text-destructive-foreground border-2 border-background rounded-full flex items-center justify-center">
+                    {totalCartItems > 99 ? '99+' : totalCartItems}
+                  </Badge>
+                )}
+              </Button>
+            </CartDrawer>
           )}
 
           {/* Theme toggle */}
@@ -430,7 +483,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                   </Link>
 
                   <Link
-                    href="/dashboard/wallet"
+                    href={user?.role === 'buyer' ? '/dashboard/buyer/wallet' : '/dashboard/wallet'}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => setIsProfileOpen(false)}
                   >

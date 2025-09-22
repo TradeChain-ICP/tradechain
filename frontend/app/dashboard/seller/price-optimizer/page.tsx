@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { TrendingUp, Target, Zap, BarChart3, Users, AlertTriangle, RefreshCw } from "lucide-react"
+import { useContentPadding } from "@/contexts/sidebar-context"
 
-import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,7 @@ export default function PriceOptimizerPage() {
   const [optimizationGoal, setOptimizationGoal] = useState("revenue")
   const [priceRange, setPriceRange] = useState([1800, 2100])
   const [autoOptimization, setAutoOptimization] = useState(false)
+  const { contentPadding, containerWidth } = useContentPadding()
 
   const handleApplyPricing = (productId: string, newPrice: number) => {
     toast({
@@ -36,9 +37,9 @@ export default function PriceOptimizerPage() {
   }
 
   return (
-    <DashboardLayout userRole="seller">
-      <div className="container mx-auto px-4 py-6 pb-20 lg:pb-8">
-        <div className="flex items-center justify-between mb-6">
+    <div className={`min-h-screen ${contentPadding}`}>
+      <div className={`mx-auto space-y-6 ${containerWidth}`}>
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">AI Price Optimizer</h1>
             <p className="text-muted-foreground">
@@ -58,7 +59,7 @@ export default function PriceOptimizerPage() {
         </div>
 
         {/* Optimization Overview */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -462,7 +463,7 @@ export default function PriceOptimizerPage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }
 

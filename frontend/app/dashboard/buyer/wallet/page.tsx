@@ -1,7 +1,6 @@
-// app/dashboard/buyer/wallet/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -13,10 +12,20 @@ import {
   Wallet,
   DollarSign,
   BarChart3,
-  Zap,
   RefreshCw,
   ExternalLink,
   AlertTriangle,
+  Receipt,
+  CheckCircle,
+  Plus,
+  Send,
+  Brain,
+  Target,
+  Lightbulb,
+  Zap,
+  AlertCircle,
+  ShoppingBag,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +40,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useContentPadding } from '@/contexts/sidebar-context';
 import { useAuth } from '@/contexts/auth-context';
 import {
@@ -47,103 +61,328 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 
-export default function WalletPage() {
+// Real-time price data hook
+const useCryptoPrices = () => {
+  const [prices, setPrices] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Using CoinGecko free API (no API key required)
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=internet-computer,usd-coin,bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true'
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch prices');
+
+      const data = await response.json();
+
+      // Also fetch fiat exchange rates
+      const fiatResponse = await fetch(
+        'https://api.exchangerate-api.com/v4/latest/USD'
+      );
+
+      let fiatRates = { NGN: 0.0012, EUR: 1.08 }; // fallback rates
+      if (fiatResponse.ok) {
+        const fiatData = await fiatResponse.json();
+        fiatRates = {
+          NGN: 1 / fiatData.rates.NGN,
+          EUR: fiatData.rates.EUR,
+        };
+      }
+
+      setPrices({
+        ICP: {
+          usd: data['internet-computer']?.usd || 7.0,
+          change24h: data['internet-computer']?.usd_24h_change || 0,
+        },
+        USD: {
+          usd: 1.0,
+          change24h: 0,
+        },
+        Naira: {
+          usd: fiatRates.NGN,
+          change24h: -0.8, // Naira tends to depreciate
+        },
+        Euro: {
+          usd: fiatRates.EUR,
+          change24h: 0.2,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to fetch prices:', err);
+      setError('Failed to fetch real-time prices');
+      // Fallback to demo data
+      setPrices({
+        ICP: { usd: 7.0, change24h: 2.5 },
+        USD: { usd: 1.0, change24h: 0 },
+        Naira: { usd: 0.0012, change24h: -0.8 },
+        Euro: { usd: 1.08, change24h: 0.2 },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000); // Update every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return { prices, loading, error, refetch: fetchPrices };
+};
+
+// AI Trading Insights Hook for Buyers
+const useAIInsights = (wallet: any, prices: any) => {
+  const [insights, setInsights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const generateInsights = () => {
+    if (!wallet || !prices) return;
+
+    setLoading(true);
+
+    // Simulate AI analysis with buyer-specific insights
+    setTimeout(() => {
+      const newInsights = [];
+
+      // Portfolio diversification analysis
+      const totalValue = getTotalPortfolioValue(wallet, prices);
+      const icpPercentage = getTokenAllocation('ICP', wallet, prices);
+
+      if (icpPercentage > 70) {
+        newInsights.push({
+          type: 'warning',
+          title: 'High ICP Concentration',
+          description: `${icpPercentage}% of your portfolio is in ICP. Consider diversifying to reduce risk.`,
+          action: 'Explore Other Assets',
+          confidence: 85,
+        });
+      }
+
+      // Buying opportunity analysis
+      if (prices.ICP?.change24h < -5) {
+        newInsights.push({
+          type: 'opportunity',
+          title: 'Potential Buying Opportunity',
+          description: `ICP is down ${Math.abs(prices.ICP.change24h).toFixed(2)}% in 24h. This could be a good entry point.`,
+          action: 'Add Funds',
+          confidence: 72,
+        });
+      }
+
+      // Shopping recommendations
+      if (totalValue > 500) {
+        newInsights.push({
+          type: 'suggestion',
+          title: 'Premium Products Available',
+          description: 'Your portfolio balance qualifies you for premium commodity trading opportunities.',
+          action: 'Explore Premium',
+          confidence: 78,
+        });
+      }
+
+      // Market correlation insight
+      newInsights.push({
+        type: 'info',
+        title: 'Market Trends',
+        description: 'Commodity prices are showing strong correlation with crypto markets. Good time for cross-asset trading.',
+        action: 'View Trends',
+        confidence: 82,
+      });
+
+      setInsights(newInsights);
+      setLoading(false);
+    }, 1500);
+  };
+
+  useEffect(() => {
+    generateInsights();
+  }, [wallet, prices]);
+
+  return { insights, loading, refresh: generateInsights };
+};
+
+// Helper functions
+const formatBalance = (balance: number) => {
+  return (balance / 100000000).toFixed(8);
+};
+
+const getTotalPortfolioValue = (wallet: any, prices: any) => {
+  if (!wallet || !prices) return 0;
+
+  const icpValue = (wallet.icpBalance / 100000000) * prices.ICP?.usd;
+  const usdValue = wallet.usdBalance / 100000000;
+  const nairaValue = (wallet.nairaBalance / 100000000) * prices.Naira?.usd;
+  const euroValue = (wallet.euroBalance / 100000000) * prices.Euro?.usd;
+
+  return icpValue + usdValue + nairaValue + euroValue;
+};
+
+const getTokenBalance = (token: string, wallet: any) => {
+  if (!wallet) return 0;
+  switch (token) {
+    case 'ICP': return wallet.icpBalance;
+    case 'USD': return wallet.usdBalance;
+    case 'Naira': return wallet.nairaBalance;
+    case 'Euro': return wallet.euroBalance;
+    default: return 0;
+  }
+};
+
+const getTokenAllocation = (token: string, wallet: any, prices: any) => {
+  const totalValue = getTotalPortfolioValue(wallet, prices);
+  if (totalValue === 0) return 0;
+
+  let tokenValue = 0;
+  const balance = getTokenBalance(token, wallet) / 100000000;
+
+  switch (token) {
+    case 'ICP':
+      tokenValue = balance * (prices.ICP?.usd || 7.0);
+      break;
+    case 'USD':
+      tokenValue = balance;
+      break;
+    case 'Naira':
+      tokenValue = balance * (prices.Naira?.usd || 0.0012);
+      break;
+    case 'Euro':
+      tokenValue = balance * (prices.Euro?.usd || 1.08);
+      break;
+  }
+
+  return Math.round((tokenValue / totalValue) * 100);
+};
+
+export default function BuyerWalletPage() {
   const { toast } = useToast();
   const { contentPadding } = useContentPadding();
-  const { user } = useAuth();
+  const { user, wallet, getWallet, addFunds, transfer, getTransactionHistory } = useAuth();
+  const { prices, loading: pricesLoading, error: pricesError, refetch: refetchPrices } = useCryptoPrices();
+  const { insights, loading: insightsLoading, refresh: refreshInsights } = useAIInsights(wallet, prices);
+
   const [balanceVisible, setBalanceVisible] = useState(true);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawAddress, setWithdrawAddress] = useState('');
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdraw'>('deposit');
   const [isLoading, setIsLoading] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const walletData = {
-    totalBalance: 1245.67,
-    icpBalance: 1245.67,
-    usdValue: 8719.69,
-    lockedBalance: 62.28,
-    pendingTransactions: 2,
-    tokens: [
-      {
-        symbol: 'ICP',
-        name: 'Internet Computer',
-        balance: 1245.67,
-        usdValue: 8719.69,
-        change24h: 2.5,
-        color: '#29D0B0',
-        allocation: 45,
-      },
-      {
-        symbol: 'ckBTC',
-        name: 'Chain Key Bitcoin',
-        balance: 0.15,
-        usdValue: 6450.0,
-        change24h: -1.2,
-        color: '#F7931A',
-        allocation: 33,
-      },
-      {
-        symbol: 'ckETH',
-        name: 'Chain Key Ethereum',
-        balance: 2.8,
-        usdValue: 7840.0,
-        change24h: 3.8,
-        color: '#627EEA',
-        allocation: 15,
-      },
-      {
-        symbol: 'ckUSDC',
-        name: 'Chain Key USDC',
-        balance: 5000.0,
-        usdValue: 5000.0,
-        change24h: 0.1,
-        color: '#2775CA',
-        allocation: 7,
-      },
-    ],
-  };
+  // Transaction form state
+  const [amount, setAmount] = useState('');
+  const [tokenType, setTokenType] = useState<'ICP' | 'USD' | 'Naira' | 'Euro'>('ICP');
+  const [recipientAddress, setRecipientAddress] = useState('');
+  const [memo, setMemo] = useState('');
 
-  const performanceData = [
-    { date: 'Jan', value: 15420 },
-    { date: 'Feb', value: 16890 },
-    { date: 'Mar', value: 18200 },
-    { date: 'Apr', value: 19450 },
-    { date: 'May', value: 21300 },
-    { date: 'Jun', value: 22800 },
-    { date: 'Jul', value: 28009 },
-  ];
+  useEffect(() => {
+    initializeWallet();
+  }, []);
 
-  const totalPortfolioValue = walletData.tokens.reduce((sum, token) => sum + token.usdValue, 0);
-
-  const handleCopyAddress = () => {
-    navigator.clipboard.writeText(user?.walletAddress || 'rdmx6-jaaaa-aaaah-qcaiq-cai');
-    toast({
-      title: 'Address Copied',
-      description: 'Wallet address copied to clipboard.',
-    });
-  };
-
-  const handleTransaction = async () => {
-    const amount = transactionType === 'deposit' ? depositAmount : withdrawAmount;
-
-    if (!amount || Number.parseFloat(amount) <= 0) {
+  const initializeWallet = async () => {
+    try {
+      setIsLoading(true);
+      await getWallet();
+      await loadTransactionHistory();
+    } catch (error) {
+      console.error('Failed to initialize wallet:', error);
       toast({
-        title: 'Invalid Amount',
-        description: 'Please enter a valid amount.',
+        title: 'Wallet Error',
+        description: 'Failed to load wallet data. Please try again.',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadTransactionHistory = async () => {
+    try {
+      const history = await getTransactionHistory();
+      setTransactions(history);
+    } catch (error) {
+      console.error('Failed to load transaction history:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        getWallet(),
+        loadTransactionHistory(),
+        refetchPrices(),
+      ]);
+
+      toast({
+        title: 'Wallet Refreshed',
+        description: 'Your wallet data has been updated.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Refresh Failed',
+        description: 'Failed to refresh wallet data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(user?.walletAddress || '');
+      setCopySuccess(true);
+      toast({
+        title: 'Address Copied',
+        description: 'Wallet address copied to clipboard.',
+      });
+
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Could not copy address to clipboard.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const validateAmount = (amount: string, tokenType: string, isWithdraw: boolean = false) => {
+    const numAmount = Number.parseFloat(amount);
+
+    if (!amount || numAmount <= 0) {
+      return 'Please enter a valid amount greater than 0';
     }
 
-    if (transactionType === 'withdraw' && !withdrawAddress) {
+    if (numAmount > 1000000) {
+      return 'Amount too large';
+    }
+
+    if (isWithdraw) {
+      const balance = getTokenBalance(tokenType, wallet) / 100000000;
+      if (numAmount > balance) {
+        return `Insufficient balance. Available: ${balance.toFixed(8)} ${tokenType}`;
+      }
+    }
+
+    return null;
+  };
+
+  const handleAddFunds = async () => {
+    const validation = validateAmount(amount, tokenType);
+    if (validation) {
       toast({
-        title: 'Missing Address',
-        description: 'Please enter a withdrawal address.',
+        title: 'Invalid Amount',
+        description: validation,
         variant: 'destructive',
       });
       return;
@@ -151,30 +390,137 @@ export default function WalletPage() {
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const amountInSmallestUnit = Math.floor(Number.parseFloat(amount) * 100000000);
+      await addFunds(amountInSmallestUnit, tokenType);
 
       toast({
-        title: `${transactionType === 'deposit' ? 'Deposit' : 'Withdrawal'} Initiated`,
-        description: `${
-          transactionType === 'deposit' ? 'Deposit' : 'Withdrawal'
-        } of ${amount} ICP has been initiated.`,
+        title: 'Funds Added Successfully',
+        description: `${amount} ${tokenType} has been added to your wallet.`,
       });
 
-      setDepositAmount('');
-      setWithdrawAmount('');
-      setWithdrawAddress('');
+      setAmount('');
       setIsTransactionOpen(false);
-    } catch (error) {
+      await Promise.all([getWallet(), loadTransactionHistory()]);
+      refreshInsights();
+    } catch (error: any) {
       toast({
         title: 'Transaction Failed',
-        description: 'There was an error processing your transaction. Please try again.',
+        description: error.message || 'Failed to add funds. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleTransfer = async () => {
+    const validation = validateAmount(amount, tokenType, true);
+    if (validation) {
+      toast({
+        title: 'Invalid Amount',
+        description: validation,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!recipientAddress.trim()) {
+      toast({
+        title: 'Missing Address',
+        description: 'Please enter a recipient address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Basic address validation
+    if (recipientAddress.length < 20) {
+      toast({
+        title: 'Invalid Address',
+        description: 'Please enter a valid wallet address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const amountInSmallestUnit = Math.floor(Number.parseFloat(amount) * 100000000);
+      const txId = await transfer({
+        to: recipientAddress,
+        amount: amountInSmallestUnit,
+        tokenType: tokenType,
+        memo: memo || undefined,
+      });
+
+      toast({
+        title: 'Transfer Successful',
+        description: `${amount} ${tokenType} sent successfully. Transaction ID: ${txId.slice(0, 8)}...`,
+      });
+
+      setAmount('');
+      setRecipientAddress('');
+      setMemo('');
+      setIsTransactionOpen(false);
+      await Promise.all([getWallet(), loadTransactionHistory()]);
+      refreshInsights();
+    } catch (error: any) {
+      toast({
+        title: 'Transfer Failed',
+        description: error.message || 'Transfer failed. Please check your inputs and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTransaction = async () => {
+    if (transactionType === 'deposit') {
+      await handleAddFunds();
+    } else {
+      await handleTransfer();
+    }
+  };
+
+  const walletTokens = [
+    {
+      symbol: 'ICP',
+      name: 'Internet Computer',
+      balance: getTokenBalance('ICP', wallet),
+      usdValue: (getTokenBalance('ICP', wallet) / 100000000) * (prices.ICP?.usd || 7.0),
+      change24h: prices.ICP?.change24h || 0,
+      color: '#29D0B0',
+      allocation: getTokenAllocation('ICP', wallet, prices),
+    },
+    {
+      symbol: 'USD',
+      name: 'US Dollar',
+      balance: getTokenBalance('USD', wallet),
+      usdValue: getTokenBalance('USD', wallet) / 100000000,
+      change24h: prices.USD?.change24h || 0,
+      color: '#22C55E',
+      allocation: getTokenAllocation('USD', wallet, prices),
+    },
+    {
+      symbol: 'Naira',
+      name: 'Nigerian Naira',
+      balance: getTokenBalance('Naira', wallet),
+      usdValue: (getTokenBalance('Naira', wallet) / 100000000) * (prices.Naira?.usd || 0.0012),
+      change24h: prices.Naira?.change24h || 0,
+      color: '#10B981',
+      allocation: getTokenAllocation('Naira', wallet, prices),
+    },
+    {
+      symbol: 'Euro',
+      name: 'Euro',
+      balance: getTokenBalance('Euro', wallet),
+      usdValue: (getTokenBalance('Euro', wallet) / 100000000) * (prices.Euro?.usd || 1.08),
+      change24h: prices.Euro?.change24h || 0,
+      color: '#3B82F6',
+      allocation: getTokenAllocation('Euro', wallet, prices),
+    },
+  ];
 
   const StatCard = ({
     icon: Icon,
@@ -183,6 +529,7 @@ export default function WalletPage() {
     subtitle,
     trend,
     color = 'default',
+    loading = false,
   }: {
     icon: any;
     title: string;
@@ -190,6 +537,7 @@ export default function WalletPage() {
     subtitle: string;
     trend?: number;
     color?: string;
+    loading?: boolean;
   }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -200,24 +548,34 @@ export default function WalletPage() {
               ? 'text-green-600'
               : color === 'warning'
               ? 'text-yellow-600'
+              : color === 'primary'
+              ? 'text-primary'
               : 'text-muted-foreground'
           }`}
         />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{balanceVisible ? value : '••••••'}</div>
+        <div className="text-2xl font-bold">
+          {loading ? (
+            <div className="animate-pulse bg-muted h-8 w-24 rounded" />
+          ) : balanceVisible ? (
+            value
+          ) : (
+            '••••••'
+          )}
+        </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <span>{subtitle}</span>
-          {trend !== undefined && (
+          {trend !== undefined && !loading && (
             <>
               {trend > 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-600" />
-              ) : (
+              ) : trend < 0 ? (
                 <TrendingDown className="h-3 w-3 text-red-600" />
-              )}
-              <span className={trend > 0 ? 'text-green-600' : 'text-red-600'}>
+              ) : null}
+              <span className={trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : ''}>
                 {trend > 0 ? '+' : ''}
-                {trend}%
+                {trend.toFixed(2)}%
               </span>
             </>
           )}
@@ -226,13 +584,34 @@ export default function WalletPage() {
     </Card>
   );
 
+  if (isLoading && !wallet) {
+    return (
+      <div className={`flex items-center justify-center min-h-screen ${contentPadding}`}>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Loading wallet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPortfolioValue = getTotalPortfolioValue(wallet, prices);
+
   return (
     <div className={`py-6 pb-20 lg:pb-8 ${contentPadding}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Wallet</h1>
-          <p className="text-muted-foreground">Manage your digital assets and transactions</p>
+          <h1 className="text-3xl font-bold tracking-tight">Buyer Wallet</h1>
+          <p className="text-muted-foreground">
+            Manage your digital assets for commodity trading
+          </p>
+          {pricesError && (
+            <div className="flex items-center gap-2 mt-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="text-sm text-yellow-600">Using cached price data</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -246,47 +625,58 @@ export default function WalletPage() {
               {balanceVisible ? 'Hide' : 'Show'} Balance
             </span>
           </Button>
-          <Button variant="outline" size="sm" className="bg-transparent">
-            <RefreshCw className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-transparent"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="ml-2 hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
-      {/* Portfolio Overview */}
+      {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
-          icon={Wallet}
+          icon={DollarSign}
           title="Total Portfolio"
-          value={`${totalPortfolioValue.toLocaleString()}`}
-          subtitle="+12.5% from last month"
+          value={`$${totalPortfolioValue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          subtitle="All assets combined"
           trend={12.5}
           color="success"
+          loading={pricesLoading}
         />
-
         <StatCard
-          icon={DollarSign}
+          icon={Wallet}
           title="ICP Balance"
-          value={`${walletData.icpBalance.toFixed(2)} ICP`}
-          subtitle={`≈ ${walletData.usdValue.toLocaleString()}`}
-          trend={2.5}
+          value={`${formatBalance(wallet?.icpBalance || 0)} ICP`}
+          subtitle={`≈ $${(((wallet?.icpBalance || 0) / 100000000) * (prices.ICP?.usd || 7.0)).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          trend={prices.ICP?.change24h}
+          color="primary"
+          loading={pricesLoading}
+        />
+        <StatCard
+          icon={ShoppingBag}
+          title="Available for Trading"
+          value={`${((wallet?.icpBalance || 0) * 0.95 / 100000000).toFixed(2)} ICP`}
+          subtitle="Ready for purchases"
           color="success"
         />
-
         <StatCard
           icon={TrendingUp}
-          title="24h Change"
-          value="+2.5%"
-          subtitle="+$218.50"
-          trend={2.5}
-          color="success"
-        />
-
-        <StatCard
-          icon={BarChart3}
-          title="Available Balance"
-          value={`${(walletData.icpBalance * 0.95).toFixed(2)} ICP`}
-          subtitle="Ready for trading"
+          title="Wallet Status"
+          value={wallet?.isLocked ? 'Locked' : 'Active'}
+          subtitle="Current status"
+          color={wallet?.isLocked ? 'warning' : 'success'}
         />
       </div>
 
@@ -296,30 +686,53 @@ export default function WalletPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5" />
-              Wallet Address
+              Buyer Wallet Address
             </CardTitle>
-            <CardDescription>Your ICP wallet address for receiving funds</CardDescription>
+            <CardDescription>
+              Your ICP wallet address for receiving funds and making purchases
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
-                value={user?.walletAddress || 'rdmx6-jaaaa-aaaah-qcaiq-cai'}
+                value={user?.walletAddress || 'Not connected'}
                 readOnly
                 className="font-mono text-sm flex-1"
               />
-              <Button variant="outline" onClick={handleCopyAddress} className="bg-transparent">
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
+              <Button
+                variant="outline"
+                onClick={handleCopyAddress}
+                className={`bg-transparent transition-all duration-300 ${
+                  copySuccess ? 'border-green-500 text-green-600' : ''
+                }`}
+              >
+                {copySuccess ? (
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                {copySuccess ? 'Copied!' : 'Copy'}
               </Button>
             </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-start gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium">
-                    Connected via {user?.authMethod === 'nfid' ? 'NFID' : 'Internet Identity'}
-                  </p>
-                  <p>Your wallet is securely connected and ready for transactions</p>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200 dark:bg-green-950 dark:border-green-800">
+                <div className="flex items-start gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-green-700 dark:text-green-300">
+                    <p className="font-medium">Secure Payments</p>
+                    <p>Protected by ICP blockchain technology</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+                <div className="flex items-start gap-2">
+                  <div className="w-4 h-4 rounded-full bg-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="font-medium">
+                      Connected via {user?.authMethod === 'nfid' ? 'NFID' : 'Internet Identity'}
+                    </p>
+                    <p>Secure authentication</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -332,38 +745,53 @@ export default function WalletPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <Button
-                className="h-20 flex-col gap-2"
+                className="w-full h-12 justify-start"
                 onClick={() => {
                   setTransactionType('deposit');
                   setIsTransactionOpen(true);
                 }}
+                disabled={wallet?.isLocked}
               >
-                <ArrowDownLeft className="h-6 w-6" />
-                <span>Deposit</span>
+                <Plus className="h-5 w-5 mr-2" />
+                Add Funds
               </Button>
 
               <Button
                 variant="outline"
-                className="h-20 flex-col gap-2 bg-transparent"
+                className="w-full h-12 justify-start bg-transparent"
                 onClick={() => {
                   setTransactionType('withdraw');
                   setIsTransactionOpen(true);
                 }}
+                disabled={wallet?.isLocked || totalPortfolioValue === 0}
               >
-                <ArrowUpRight className="h-6 w-6" />
-                <span>Withdraw</span>
+                <Send className="h-5 w-5 mr-2" />
+                Send/Transfer
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full h-12 justify-start bg-transparent"
+                onClick={() =>
+                  window.open(
+                    `https://dashboard.internetcomputer.org/account/${user?.walletAddress}`,
+                    '_blank'
+                  )
+                }
+              >
+                <ExternalLink className="h-5 w-5 mr-2" />
+                View on Explorer
               </Button>
             </div>
 
-            {walletData.pendingTransactions > 0 && (
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            {wallet?.isLocked && (
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm text-yellow-700">
-                    {walletData.pendingTransactions} pending transaction
-                    {walletData.pendingTransactions > 1 ? 's' : ''}
+                  <span className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Wallet is temporarily locked
                   </span>
                 </div>
               </div>
@@ -375,45 +803,23 @@ export default function WalletPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Portfolio Performance */}
+          {/* Token Holdings */}
           <Card>
-            <CardHeader>
-              <CardTitle>Portfolio Performance</CardTitle>
-              <CardDescription>Your wallet value over the last 7 months</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value) => [`${value.toLocaleString()}`, 'Portfolio Value']}
-                      labelFormatter={(label) => `Month: ${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#29D0B0"
-                      strokeWidth={3}
-                      dot={{ fill: '#29D0B0', strokeWidth: 2, r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Token Holdings</CardTitle>
+                <CardDescription>Your current token portfolio for trading</CardDescription>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Portfolio Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Token Holdings</CardTitle>
-              <CardDescription>Your current token portfolio and performance</CardDescription>
+              {pricesLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Updating prices...
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {walletData.tokens.map((token) => (
+                {walletTokens.map((token) => (
                   <div
                     key={token.symbol}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
@@ -436,28 +842,30 @@ export default function WalletPage() {
                     <div className="text-right">
                       <div className="font-medium">
                         {balanceVisible
-                          ? `${token.balance.toFixed(token.symbol === 'ckUSDC' ? 2 : 4)} ${
-                              token.symbol
-                            }`
+                          ? `${formatBalance(token.balance)} ${token.symbol}`
                           : '••••••'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {balanceVisible ? `${token.usdValue.toLocaleString()}` : '••••••'}
+                        {balanceVisible ? `$${token.usdValue.toFixed(2)}` : '••••••'}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {token.change24h > 0 ? (
                         <TrendingUp className="h-4 w-4 text-green-600" />
-                      ) : (
+                      ) : token.change24h < 0 ? (
                         <TrendingDown className="h-4 w-4 text-red-600" />
-                      )}
+                      ) : null}
                       <span
                         className={`text-sm font-medium ${
-                          token.change24h > 0 ? 'text-green-600' : 'text-red-600'
+                          token.change24h > 0
+                            ? 'text-green-600'
+                            : token.change24h < 0
+                            ? 'text-red-600'
+                            : 'text-muted-foreground'
                         }`}
                       >
-                        {token.change24h > 0 ? '+' : ''}
-                        {token.change24h}%
+                        {token.change24h !== 0 && (token.change24h > 0 ? '+' : '')}
+                        {token.change24h.toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -466,63 +874,88 @@ export default function WalletPage() {
             </CardContent>
           </Card>
 
-          {/* Transaction History */}
+          {/* Recent Transactions */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>Your latest wallet activity</CardDescription>
+                <CardDescription>Your latest wallet activity and purchases</CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="bg-transparent">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View All
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-transparent"
+                onClick={loadTransactionHistory}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockTransactions.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-full ${
-                          transaction.type === 'deposit'
-                            ? 'bg-green-100 text-green-600'
-                            : transaction.type === 'withdraw'
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-blue-100 text-blue-600'
-                        }`}
-                      >
-                        {transaction.type === 'deposit' ? (
-                          <ArrowDownLeft className="h-4 w-4" />
-                        ) : transaction.type === 'withdraw' ? (
-                          <ArrowUpRight className="h-4 w-4" />
-                        ) : (
-                          <ArrowUpRight className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{transaction.description}</div>
-                        <div className="text-sm text-muted-foreground">{transaction.date}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div
-                        className={`font-medium ${
-                          transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {transaction.type === 'deposit' ? '+' : '-'}
-                        {transaction.amount} {transaction.token}
-                      </div>
-                      <Badge variant={getTransactionStatus(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
-                    </div>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No transactions yet</p>
+                    <p className="text-sm">Your transaction history will appear here</p>
                   </div>
-                ))}
+                ) : (
+                  transactions.slice(0, 5).map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`p-2 rounded-full ${
+                            transaction.transactionType === 'transfer' &&
+                            transaction.fromPrincipal === user?.principalId
+                              ? 'bg-blue-100 text-blue-600 dark:bg-blue-950'
+                              : 'bg-green-100 text-green-600 dark:bg-green-950'
+                          }`}
+                        >
+                          {transaction.transactionType === 'transfer' &&
+                          transaction.fromPrincipal === user?.principalId ? (
+                            <ArrowUpRight className="h-4 w-4" />
+                          ) : (
+                            <ArrowDownLeft className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {transaction.transactionType === 'transfer' &&
+                            transaction.fromPrincipal === user?.principalId
+                              ? 'Payment Sent'
+                              : 'Funds Received'}{' '}
+                            {transaction.tokenType}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={`font-medium ${
+                            transaction.transactionType === 'transfer' &&
+                            transaction.fromPrincipal === user?.principalId
+                              ? 'text-blue-600'
+                              : 'text-green-600'
+                          }`}
+                        >
+                          {transaction.transactionType === 'transfer' &&
+                          transaction.fromPrincipal === user?.principalId
+                            ? '-'
+                            : '+'}
+                          {formatBalance(transaction.amount)} {transaction.tokenType}
+                        </div>
+                        <Badge variant={getTransactionStatus(transaction.status)}>
+                          {transaction.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -530,7 +963,7 @@ export default function WalletPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Portfolio Distribution Chart */}
+          {/* Portfolio Distribution */}
           <Card>
             <CardHeader>
               <CardTitle>Portfolio Distribution</CardTitle>
@@ -540,7 +973,7 @@ export default function WalletPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={walletData.tokens}
+                      data={walletTokens.filter((token) => token.allocation > 0)}
                       cx="50%"
                       cy="50%"
                       innerRadius={40}
@@ -548,71 +981,128 @@ export default function WalletPage() {
                       paddingAngle={5}
                       dataKey="allocation"
                     >
-                      {walletData.tokens.map((token, index) => (
+                      {walletTokens.map((token, index) => (
                         <Cell key={`cell-${index}`} fill={token.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value}%`, 'Allocation']} />
+                    <Tooltip formatter={(value) => [`${value}%`, 'Share']} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="space-y-2">
-                {walletData.tokens.map((token) => (
-                  <div key={token.symbol} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: token.color }}
-                      ></div>
-                      <span className="font-medium">{token.symbol}</span>
+                {walletTokens
+                  .filter((token) => token.allocation > 0)
+                  .map((token) => (
+                    <div key={token.symbol} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: token.color }}
+                        ></div>
+                        <span className="font-medium">{token.symbol}</span>
+                      </div>
+                      <span className="text-muted-foreground">{token.allocation}%</span>
                     </div>
-                    <span className="text-muted-foreground">{token.allocation}%</span>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* AI Investment Insights */}
+          {/* AI Buying Insights */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                AI Insights
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Brain className="h-4 w-4 text-primary" />
+                Smart Trading Insights
               </CardTitle>
-              <CardDescription>Personalized recommendations for your portfolio</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="font-medium text-green-700 text-sm">
-                    Diversification Opportunity
-                  </span>
+              {insightsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Analyzing market data...
                 </div>
-                <p className="text-xs text-green-600">
-                  Consider adding agricultural commodities to balance your precious metals holdings.
-                </p>
-              </div>
+              ) : (
+                insights.slice(0, 3).map((insight, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${
+                      insight.type === 'opportunity'
+                        ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                        : insight.type === 'warning'
+                        ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
+                        : insight.type === 'suggestion'
+                        ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
+                        : 'bg-gray-50 border-gray-200 dark:bg-gray-950 dark:border-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5">
+                        {insight.type === 'opportunity' ? (
+                          <Target className="h-4 w-4 text-green-600" />
+                        ) : insight.type === 'warning' ? (
+                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        ) : insight.type === 'suggestion' ? (
+                          <Lightbulb className="h-4 w-4 text-blue-600" />
+                        ) : (
+                          <BarChart3 className="h-4 w-4 text-gray-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4
+                          className={`font-medium text-sm ${
+                            insight.type === 'opportunity'
+                              ? 'text-green-700 dark:text-green-300'
+                              : insight.type === 'warning'
+                              ? 'text-yellow-700 dark:text-yellow-300'
+                              : insight.type === 'suggestion'
+                              ? 'text-blue-700 dark:text-blue-300'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {insight.title}
+                        </h4>
+                        <p
+                          className={`text-xs mt-1 ${
+                            insight.type === 'opportunity'
+                              ? 'text-green-600 dark:text-green-400'
+                              : insight.type === 'warning'
+                              ? 'text-yellow-600 dark:text-yellow-400'
+                              : insight.type === 'suggestion'
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {insight.description}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-muted-foreground">
+                            {insight.confidence}% confidence
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                          >
+                            {insight.action}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
 
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart3 className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-700 text-sm">Market Timing</span>
-                </div>
-                <p className="text-xs text-blue-600">
-                  Gold prices trending upward. Good time to increase position.
-                </p>
-              </div>
-
-              <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-amber-700 text-sm">Risk Assessment</span>
-                </div>
-                <p className="text-xs text-amber-600">
-                  Portfolio has moderate risk. Consider stable assets like timber.
-                </p>
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full h-8 text-xs bg-transparent"
+                  onClick={refreshInsights}
+                  disabled={insightsLoading}
+                >
+                  <RefreshCw className={`h-3 w-3 mr-2 ${insightsLoading ? 'animate-spin' : ''}`} />
+                  Refresh Insights
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -624,33 +1114,28 @@ export default function WalletPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Created</span>
+                <span className="font-medium">
+                  {wallet?.createdAt ? new Date(wallet.createdAt).toLocaleDateString() : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Last Activity</span>
+                <span className="font-medium">
+                  {wallet?.lastTransactionAt
+                    ? new Date(wallet.lastTransactionAt).toLocaleDateString()
+                    : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Total Transactions</span>
-                <span className="font-medium">47</span>
+                <span className="font-medium">{wallet?.totalTransactions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">This Month</span>
-                <span className="font-medium">12</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Average Transaction</span>
-                <span className="font-medium">$1,250</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Largest Transaction</span>
-                <span className="font-medium">$4,180</span>
-              </div>
-
-              <div className="pt-3 border-t">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Locked Balance</span>
-                    <span>{walletData.lockedBalance.toFixed(2)} ICP</span>
-                  </div>
-                  <Progress value={5} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    5% of total balance locked in trades
-                  </p>
-                </div>
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge variant={wallet?.isLocked ? 'destructive' : 'default'}>
+                  {wallet?.isLocked ? 'Locked' : 'Active'}
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -662,83 +1147,151 @@ export default function WalletPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {transactionType === 'deposit' ? 'Deposit ICP' : 'Withdraw ICP'}
+              {transactionType === 'deposit' ? 'Add Funds' : 'Send Tokens'}
             </DialogTitle>
             <DialogDescription>
               {transactionType === 'deposit'
-                ? 'Add ICP tokens to your wallet for trading'
-                : 'Send ICP tokens to an external wallet'}
+                ? 'Add tokens to your wallet for trading'
+                : 'Send tokens to another wallet address'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {transactionType === 'withdraw' && (
-              <div className="space-y-2">
-                <Label htmlFor="withdraw-address">Destination Address</Label>
-                <Input
-                  id="withdraw-address"
-                  placeholder="Enter ICP address"
-                  value={withdrawAddress}
-                  onChange={(e) => setWithdrawAddress(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="token-type">Token Type</Label>
+              <Select
+                value={tokenType}
+                onValueChange={(value: 'ICP' | 'USD' | 'Naira' | 'Euro') => setTokenType(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ICP">
+                    ICP - ${(prices.ICP?.usd || 7.0).toFixed(2)}
+                  </SelectItem>
+                  <SelectItem value="USD">USD - $1.00</SelectItem>
+                  <SelectItem value="Naira">
+                    Naira - ${(prices.Naira?.usd || 0.0012).toFixed(4)}
+                  </SelectItem>
+                  <SelectItem value="Euro">
+                    Euro - ${(prices.Euro?.usd || 1.08).toFixed(2)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (ICP)</Label>
+              <Label htmlFor="amount">Amount</Label>
               <Input
                 id="amount"
                 type="number"
                 placeholder="0.00"
-                value={transactionType === 'deposit' ? depositAmount : withdrawAmount}
-                onChange={(e) =>
-                  transactionType === 'deposit'
-                    ? setDepositAmount(e.target.value)
-                    : setWithdrawAmount(e.target.value)
-                }
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                step="0.00000001"
               />
               {transactionType === 'withdraw' && (
                 <p className="text-xs text-muted-foreground">
-                  Available: {walletData.icpBalance.toFixed(2)} ICP
+                  Available: {formatBalance(getTokenBalance(tokenType, wallet))} {tokenType}
                 </p>
               )}
             </div>
 
-            <div
-              className={`p-3 rounded-lg ${
-                transactionType === 'deposit'
-                  ? 'bg-blue-50 border border-blue-200'
-                  : 'bg-amber-50 border border-amber-200'
-              }`}
-            >
-              <p
-                className={`text-sm ${
-                  transactionType === 'deposit' ? 'text-blue-700' : 'text-amber-700'
-                }`}
-              >
-                {transactionType === 'deposit'
-                  ? `Send ICP to your wallet address: ${
-                      user?.walletAddress || 'rdmx6-jaaaa-aaaah-qcaiq-cai'
-                    }`
-                  : 'Network fee: 0.0001 ICP • Processing time: 1-2 minutes'}
-              </p>
-            </div>
+            {transactionType === 'withdraw' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="recipient">Recipient Address</Label>
+                  <Input
+                    id="recipient"
+                    placeholder="Enter recipient address"
+                    value={recipientAddress}
+                    onChange={(e) => setRecipientAddress(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="memo">Memo (Optional)</Label>
+                  <Input
+                    id="memo"
+                    placeholder="Transaction memo"
+                    value={memo}
+                    onChange={(e) => setMemo(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            {transactionType === 'deposit' && (
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    This adds funds to your wallet for trading purposes. In production, you would
+                    deposit real tokens from exchanges or other wallets.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {amount && (
+              <div className="p-3 rounded-lg bg-muted">
+                <div className="flex justify-between text-sm">
+                  <span>Amount:</span>
+                  <span className="font-medium">
+                    {amount} {tokenType}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>USD Value:</span>
+                  <span className="font-medium">
+                    ${(
+                      Number.parseFloat(amount || '0') *
+                      (prices[tokenType]?.usd || 1.0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                {transactionType === 'withdraw' && (
+                  <div className="flex justify-between text-sm">
+                    <span>Network Fee:</span>
+                    <span className="font-medium">~0.0001 ICP</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTransactionOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsTransactionOpen(false);
+                setAmount('');
+                setRecipientAddress('');
+                setMemo('');
+              }}
+              className="bg-transparent"
+            >
               Cancel
             </Button>
-            <Button onClick={handleTransaction} disabled={isLoading}>
+            <Button
+              onClick={handleTransaction}
+              disabled={
+                isLoading ||
+                !amount ||
+                Number.parseFloat(amount) <= 0 ||
+                (transactionType === 'withdraw' && !recipientAddress.trim())
+              }
+            >
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Processing...
                 </>
               ) : transactionType === 'deposit' ? (
-                'Generate Address'
+                'Add Funds'
               ) : (
-                'Withdraw'
+                'Send'
               )}
             </Button>
           </DialogFooter>
@@ -751,62 +1304,13 @@ export default function WalletPage() {
 // Helper function
 function getTransactionStatus(status: string) {
   switch (status) {
-    case 'Completed':
+    case 'completed':
       return 'default';
-    case 'Pending':
+    case 'pending':
       return 'secondary';
-    case 'Failed':
+    case 'failed':
       return 'destructive';
     default:
       return 'outline';
   }
 }
-
-// Mock data
-const mockTransactions = [
-  {
-    id: '1',
-    type: 'purchase',
-    description: 'Gold Bullion Purchase',
-    amount: '278.57',
-    token: 'ICP',
-    date: 'Jul 25, 2024',
-    status: 'Completed',
-  },
-  {
-    id: '2',
-    type: 'deposit',
-    description: 'ICP Deposit',
-    amount: '500.00',
-    token: 'ICP',
-    date: 'Jul 24, 2024',
-    status: 'Completed',
-  },
-  {
-    id: '3',
-    type: 'purchase',
-    description: 'Silver Bars Purchase',
-    amount: '40.00',
-    token: 'ICP',
-    date: 'Jul 22, 2024',
-    status: 'Completed',
-  },
-  {
-    id: '4',
-    type: 'withdraw',
-    description: 'ICP Withdrawal',
-    amount: '100.00',
-    token: 'ICP',
-    date: 'Jul 20, 2024',
-    status: 'Pending',
-  },
-  {
-    id: '5',
-    type: 'purchase',
-    description: 'Agricultural Products',
-    amount: '412.86',
-    token: 'ICP',
-    date: 'Jul 15, 2024',
-    status: 'Completed',
-  },
-];
