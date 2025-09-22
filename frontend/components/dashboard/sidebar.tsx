@@ -105,7 +105,7 @@ const buyerNavigation: NavigationItem[] = [
   },
   {
     name: 'Messages',
-    href: '/dashboard/buyer/messages',
+    href: '/dashboard/messages',
     icon: MessageSquare,
     badge: 'Soon',
     disabled: true,
@@ -185,7 +185,7 @@ const sellerNavigation: NavigationItem[] = [
   },
   {
     name: 'Messages',
-    href: '/dashboard/seller/messages',
+    href: '/dashboard/messages',
     icon: MessageSquare,
     badge: 'Soon',
     disabled: true,
