@@ -17,6 +17,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function SellerStorePage({ params }: { params: { id: string } }) {
   const sellerId = params.id
   const { toast } = useToast()

@@ -1,3 +1,4 @@
+// app/category/[slug]/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -16,6 +17,10 @@ import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+
+export async function generateStaticParams() {
+  return [];
+}
 
 export default function CategoryPage() {
   const params = useParams()

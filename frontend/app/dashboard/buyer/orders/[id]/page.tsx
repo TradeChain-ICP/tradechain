@@ -12,6 +12,10 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const { toast } = useToast()
   const orderId = params.id

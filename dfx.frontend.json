@@ -1,0 +1,18 @@
+{
+	"canisters": {
+		"frontend": {
+			"type": "assets",
+			"source": [
+				"frontend/out"
+			]
+		}
+	},
+	"networks": {
+		"ic": {
+			"providers": [
+				"https://icp-api.io"
+			],
+			"type": "persistent"
+		}
+	}
+}

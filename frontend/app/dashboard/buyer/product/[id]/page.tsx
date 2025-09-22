@@ -38,6 +38,10 @@ interface CartItem {
   stock: number;
 }
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { toast } = useToast()
   const { contentPadding } = useContentPadding()

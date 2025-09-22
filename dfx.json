@@ -8,6 +8,12 @@
 			"type": "custom",
 			"candid": "canisters/internet_identity/internet_identity.did",
 			"wasm": "canisters/internet_identity/internet_identity.wasm"
+		},
+		"frontend": {
+			"type": "assets",
+			"source": [
+				"frontend/out"
+			]
 		}
 	},
 	"output_env_file": ".env",

@@ -32,6 +32,10 @@ import { useToast } from "@/components/ui/use-toast"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { useContentPadding } from "@/contexts/sidebar-context"
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function SellerProductDetailPage() {
   const params = useParams();
   const router = useRouter();

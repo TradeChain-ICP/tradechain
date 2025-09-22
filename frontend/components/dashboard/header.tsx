@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useProduct } from '@/contexts/product-context';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 
@@ -41,6 +42,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
   const { user, disconnect } = useAuth();
+  const { cart, updateCartQuantity, removeFromCart, clearCart, getCartItemsCount } = useProduct();
   const { isMobileOpen, setIsMobileOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -50,31 +52,6 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cart state for buyers
-  const [cartItems, setCartItems] = useState([
-    {
-      id: '1',
-      name: 'Gold Bullion - 1oz American Eagle',
-      price: 1950.0,
-      quantity: 2,
-      unit: 'oz',
-      image: '/placeholder.svg?height=60&width=60',
-      seller: 'Premium Metals Co.',
-      category: 'Precious Metals',
-      stock: 50,
-    },
-    {
-      id: '2',
-      name: 'Silver Bars - 10oz',
-      price: 280.0,
-      quantity: 1,
-      unit: 'bar',
-      image: '/placeholder.svg?height=60&width=60',
-      seller: 'Silver Traders Inc.',
-      category: 'Precious Metals',
-      stock: 25,
-    },
-  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -176,25 +153,8 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
     }
   };
 
-  // Cart handlers for buyers
-  const handleUpdateQuantity = (id: string, quantity: number) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, quantity: Math.max(0, quantity) } : item
-      ).filter(item => item.quantity > 0)
-    );
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
-  };
-
-  // Calculate total cart items
-  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  // Get total cart items from product context
+  const totalCartItems = getCartItemsCount();
 
   // KYC Status Helper Functions
   const getKYCStatus = () => {
@@ -343,10 +303,10 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
           {/* Shopping Cart - Only for buyers */}
           {user?.role === 'buyer' && (
             <CartDrawer
-              cartItems={cartItems}
-              onUpdateQuantity={handleUpdateQuantity}
-              onRemoveItem={handleRemoveItem}
-              onClearCart={handleClearCart}
+              cartItems={cart}
+              onUpdateQuantity={updateCartQuantity}
+              onRemoveItem={removeFromCart}
+              onClearCart={clearCart}
             >
               <Button
                 variant="ghost"
@@ -483,7 +443,7 @@ export function DashboardHeader({ className }: DashboardHeaderProps) {
                   </Link>
 
                   <Link
-                    href={user?.role === 'buyer' ? '/dashboard/buyer/wallet' : '/dashboard/wallet'}
+                    href={user?.role === 'buyer' ? '/dashboard/buyer/wallet' : '/dashboard/seller/wallet'}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => setIsProfileOpen(false)}
                   >

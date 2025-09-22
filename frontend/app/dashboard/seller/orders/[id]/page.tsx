@@ -102,6 +102,10 @@ const statusSteps = [
   { key: 'delivered', label: 'Delivered', icon: CheckCircle },
 ];
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function SellerOrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
