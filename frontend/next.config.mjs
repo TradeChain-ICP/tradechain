@@ -10,7 +10,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Only use static export specifically for ICP mainnet deployment
-  output: process.env.DEPLOY_TARGET === 'icp' ? 'export' : undefined,
+  output: 'export',
   
   // Only set assetPrefix for ICP deployment
   // assetPrefix: process.env.DEPLOY_TARGET === 'icp' ? '/' : undefined,
