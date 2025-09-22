@@ -91,7 +91,7 @@ const buyerNavigation: NavigationItem[] = [
   },
   {
     name: 'Wallet',
-    href: '/dashboard/wallet',
+    href: '/dashboard/buyer/wallet',
     icon: Wallet,
     badge: null,
     disabled: false,
