@@ -139,6 +139,12 @@ export default function SupportPage() {
                 About
               </Link>
               <Link
+                href="/documentation"
+                className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full"
+              >
+                Docs
+              </Link>
+              <Link
                 href="/support"
                 className="text-base font-semibold text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary"
               >
@@ -225,6 +231,13 @@ export default function SupportPage() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 About
+              </Link>
+              <Link
+                href="/documentation"
+                className="py-3 text-base font-semibold text-muted-foreground hover:text-foreground transition-colors border-b border-border/50"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Docs
               </Link>
               <Link
                 href="/support"
@@ -617,7 +630,7 @@ export default function SupportPage() {
                     </li>
                     <li>
                       <Link
-                        href="#docs"
+                        href="/documentation"
                         className="text-base text-muted-foreground hover:text-foreground transition-colors font-medium"
                       >
                         Documentation
